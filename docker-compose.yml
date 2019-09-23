@@ -1,0 +1,27 @@
+---
+version: "3.3"
+services:
+  sftp:
+    image: atmoz/sftp:latest
+    ports:
+      - "2222:22"
+    volumes:
+      - ./ftp-home/sftp/home/foo:/home/foo
+    command: foo:foo:2000:2000
+
+  ftp:
+    image: stilliard/pure-ftpd:latest
+    ports:
+      - "2121:21"
+      - "30000-30009:30000-30009"
+    volumes:
+      - ./ftp-home/ftp/home:/home/username/
+      - ./ftp-home/ftp/:/etc/ssl/private/
+    environment:
+      PUBLICHOST: "localhost"
+      FTP_USER_NAME: username
+      FTP_USER_PASS: userpass
+      FTP_USER_HOME: /home/username
+      FTP_USER_UID: 2000
+      FTP_USER_GID: 2000
+      ADDED_FLAGS: "--tls=1"
