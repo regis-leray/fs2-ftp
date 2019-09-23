@@ -1,0 +1,31 @@
+version: 2
+
+jobs:
+  build:
+    working_directory: ~/sbt-docker
+    docker:
+      - image: circleci/openjdk:11-jdk
+
+    steps:
+      - setup_remote_docker
+
+      - checkout
+
+      - restore_cache:
+          keys:
+            - sbt-cache-{{ checksum "build.sbt" }}
+
+
+      - run: |
+          docker-compose up -d
+          sbt ";clean;test;coverageReport;coverageAggregate;exit"
+
+
+      - save_cache:
+          key: sbt-cache-{{ checksum "build.sbt" }}
+          paths:
+            - ~/.sbt/boot
+            - ~/.sbt/preloaded
+            - ~/.ivy2
+
+      - run: bash <(curl -s https://codecov.io/bash)

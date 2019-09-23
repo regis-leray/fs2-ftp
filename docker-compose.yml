@@ -1,0 +1,40 @@
+---
+version: "3.3"
+services:
+  sftp:
+    image: atmoz/sftp:latest
+    ports:
+      - "2222:22"
+    volumes:
+      - ./src/test/resources/sftp/home/foo:/home/foo
+    command: foo:foo:1001
+
+#  sftp:
+#    image: atmoz/sftp
+#    volumes:
+#      - ./ftp/tmp/home:/home/username/upload
+#      - ./src/test/resources/id_rsa.pub:/home/username/.ssh/keys/id_rsa.pub:ro
+#      - ./src/test/resources/sftpd/ssh_host_ed25519_key:/tmp/ssh_host_ed25519_key
+#      - ./src/test/resources/sftpd/ssh_host_rsa_key:/tmp/ssh_host_rsa_key
+#      - ./src/test/resources/sftpd/init.sh:/etc/sftp.d/init.sh
+#    ports:
+#      - "2222:22"
+#    command: username:userpass:2000:2000
+
+
+  ftp:
+    image: stilliard/pure-ftpd:latest
+    ports:
+      - "2121:21"
+      - "30000-30009:30000-30009"
+    volumes:
+      - ./src/test/resources/ftp/home:/home/username/
+      - ./src/test/resources/ftp/:/etc/ssl/private/
+    environment:
+      PUBLICHOST: "localhost"
+      FTP_USER_NAME: username
+      FTP_USER_PASS: userpass
+      FTP_USER_HOME: /home/username
+      FTP_USER_UID: 2000
+      FTP_USER_GID: 2000
+      ADDED_FLAGS: "--tls=1"
