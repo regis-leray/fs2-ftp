@@ -8,7 +8,7 @@ import net.schmizz.sshj.{DefaultConfig, SSHClient}
 import org.scalatest.{Matchers, WordSpec}
 import ray.fs2.ftp.SFtp._
 import ray.fs2.ftp.settings.FtpCredentials.credentials
-import ray.fs2.ftp.settings.SFtpSettings
+import ray.fs2.ftp.settings.{SFtpSettings}
 
 import scala.concurrent.ExecutionContext
 import scala.io.Source
@@ -18,11 +18,35 @@ class SFtpTest extends WordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.global
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  private val settings = SFtpSettings("localhost", port = 2222,  credentials("foo", "foo"))
+  private val settings = SFtpSettings("127.0.0.1", port = 2222,  credentials("foo", "foo"))
 
   val home = Paths.get("src","test","resources", "sftp", "home", "foo")
 
   "SFtp" should {
+    "connect with invalid credentials" in {
+      implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
+
+      connect[IO](settings.copy(credentials = credentials("invalid", "invalid")))
+        .attempt.unsafeRunSync() should matchPattern {
+        case Left(_) =>
+      }
+
+      sshClient.disconnect()
+    }
+
+    "connect with valid credentials" in {
+      implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
+
+      val attempt = connect[IO](settings).attempt.unsafeRunSync()
+
+      attempt should matchPattern {
+        case Right(_) =>
+      }
+
+      attempt.right.get.close()
+      sshClient.disconnect()
+    }
+
     "listFiles" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 

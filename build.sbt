@@ -9,7 +9,7 @@ lazy val `fs2-ftp` = project
     name := "fs2-ftp",
     description := "fs2-ftp",
 
-    fork := true,
+    Test / fork := true,
     parallelExecution in Test := false,
 
     homepage := Some(url("https://github.com/regis-leray/fs2-ftp")),
@@ -30,9 +30,6 @@ lazy val `fs2-ftp` = project
       "-Ypartial-unification",
       "-language:postfixOps"
     ),
-
-//    javacOptions in(Compile, compile) ++= Seq("-source", "1.8", "-target", "1.8"),
-//    javacOptions in(Compile, doc) := Seq("-source", "1.8"),
 
     credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential"),
 
@@ -65,5 +62,9 @@ lazy val `fs2-ftp` = project
     "co.fs2" %% "fs2-io" % "1.0.5",
     "com.hierynomus" % "sshj" % "0.27.0",
     "commons-net" % "commons-net" % "3.6",
+
+    "org.apache.logging.log4j" % "log4j-api" % "2.12.0" % Test,
+    "org.apache.logging.log4j" % "log4j-core" % "2.12.0" % Test,
+    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.12.0" % Test,
     "org.scalatest" %% "scalatest" % "3.0.8" % Test
   ))

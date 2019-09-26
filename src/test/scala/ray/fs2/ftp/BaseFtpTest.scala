@@ -6,6 +6,7 @@ import cats.effect.Resource.fromAutoCloseable
 import cats.effect.{ContextShift, IO}
 import org.scalatest.{Matchers, WordSpec}
 import ray.fs2.ftp.Ftp._
+import ray.fs2.ftp.settings.FtpCredentials.credentials
 import ray.fs2.ftp.settings.FtpSettings
 
 import scala.concurrent.ExecutionContext
@@ -21,6 +22,24 @@ trait BaseFtpTest extends WordSpec with Matchers {
   val home = Paths.get("src", "test", "resources", "ftp", "home")
 
   "Ftp" should {
+    "invalid credentials" in {
+      connect[IO](settings.copy(credentials = credentials("test", "test")))
+        .attempt.unsafeRunSync() should matchPattern {
+        case Left(_) =>
+      }
+    }
+
+    "valid credentials" in {
+      val attempt = connect[IO](settings).attempt.unsafeRunSync()
+
+      attempt should matchPattern {
+        case Right(_) =>
+      }
+
+      attempt.right.get.logout()
+      attempt.right.get.disconnect()
+    }
+
     "listFiles" in {
       (for {
         client <- connect[IO](settings)
@@ -51,7 +70,7 @@ trait BaseFtpTest extends WordSpec with Matchers {
       (for {
         client <- connect[IO](settings)
         file <- stat[IO](client)("/wrong-path.xml")
-        _ <- disconnect[IO](client)
+          .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
       } yield file).unsafeRunSync().map(_.name) shouldBe None
     }
 
@@ -94,7 +113,7 @@ trait BaseFtpTest extends WordSpec with Matchers {
       (for {
         client <- connect[IO](settings)
         _ <- mkdir[IO](client)("/dir1/users.csv")
-        _ <- disconnect[IO](client)
+          .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
       } yield ()).attempt.unsafeRunSync() should matchPattern {
         case Left(_) =>
       }
@@ -119,7 +138,7 @@ trait BaseFtpTest extends WordSpec with Matchers {
       (for {
         client <- connect[IO](settings)
         _ <- rm[IO](client)("/dont-exist")
-        _ <- disconnect[IO](client)
+          .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
       } yield ()).attempt.unsafeRunSync() should matchPattern {
         case Left(_) =>
       }
@@ -144,7 +163,7 @@ trait BaseFtpTest extends WordSpec with Matchers {
       (for {
         client <- connect[IO](settings)
         _ <- rmdir[IO](client)("/dont-exist")
-        _ <- disconnect[IO](client)
+          .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
       } yield ()).attempt.unsafeRunSync() should matchPattern {
         case Left(_) =>
       }
@@ -174,7 +193,7 @@ trait BaseFtpTest extends WordSpec with Matchers {
       (for {
         client <- connect[IO](settings)
         _ <- upload[IO](client)("/dont-exist/hello-world.txt", data)
-        _ <- disconnect[IO](client)
+          .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
       } yield ()).attempt.unsafeRunSync() should matchPattern {
         case Left(_) =>
       }

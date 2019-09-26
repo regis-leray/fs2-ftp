@@ -19,7 +19,7 @@ object Ftp {
     ftpClient.connect(settings.host, settings.port)
     settings.configureConnection(ftpClient)
 
-    ftpClient.login(settings.credentials.username, settings.credentials.password)
+    val success = ftpClient.login(settings.credentials.username, settings.credentials.password)
 
     if (settings.binary) {
       ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
@@ -29,8 +29,9 @@ object Ftp {
       ftpClient.enterLocalPassiveMode()
     }
 
-    ftpClient
-  }
+    success -> ftpClient
+  }.ensure(new IllegalArgumentException(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
+    .map(_._2)
 
   def disconnect[F[_]](client: FTPClient)(implicit F: Async[F]): F[Unit] = for {
     connected <- F.delay(client.isConnected)
@@ -110,7 +111,5 @@ object Ftp {
       ).collect {
         case (perm, true) ⇒ perm
       }.toSet
-
   }
-
 }

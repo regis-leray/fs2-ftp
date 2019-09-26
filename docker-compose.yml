@@ -9,19 +9,6 @@ services:
       - ./src/test/resources/sftp/home/foo:/home/foo
     command: foo:foo:1001
 
-#  sftp:
-#    image: atmoz/sftp
-#    volumes:
-#      - ./ftp/tmp/home:/home/username/upload
-#      - ./src/test/resources/id_rsa.pub:/home/username/.ssh/keys/id_rsa.pub:ro
-#      - ./src/test/resources/sftpd/ssh_host_ed25519_key:/tmp/ssh_host_ed25519_key
-#      - ./src/test/resources/sftpd/ssh_host_rsa_key:/tmp/ssh_host_rsa_key
-#      - ./src/test/resources/sftpd/init.sh:/etc/sftp.d/init.sh
-#    ports:
-#      - "2222:22"
-#    command: username:userpass:2000:2000
-
-
   ftp:
     image: stilliard/pure-ftpd:latest
     ports:
