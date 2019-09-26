@@ -20,7 +20,7 @@ class SFtpTest extends WordSpec with Matchers {
 
   private val settings = SFtpSettings("127.0.0.1", port = 2222,  credentials("foo", "foo"))
 
-  val home = Paths.get("src","test","resources", "sftp", "home", "foo")
+  val home = Paths.get("ftp-home/sftp/home/foo")
 
   "SFtp" should {
     "connect with invalid credentials" in {
@@ -125,13 +125,13 @@ class SFtpTest extends WordSpec with Matchers {
 
       (for {
         client <- connect[IO](settings)
-        _ <- mkdirs[IO](client)("/new-dir/ndir")
+        _ <- mkdirs[IO](client)("/dir1/new-dir")
         _ <- disconnect[IO](client)
       } yield ()).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
 
-      List("new-dir/ndir", "new-dir").foreach(p => Files.delete(home.resolve(p)))
+      Files.delete(home.resolve("dir1/new-dir"))
     }
 
     "mkdirs fail when invalid path" in {
@@ -149,12 +149,12 @@ class SFtpTest extends WordSpec with Matchers {
     "rm valid path" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      val path = home.resolve("to-delete.txt")
+      val path = home.resolve("dir1/to-delete.txt")
       Files.createFile(path)
 
       (for {
         client <- connect[IO](settings)
-        _ <- rm[IO](client)("/to-delete.txt")
+        _ <- rm[IO](client)("/dir1/to-delete.txt")
         _ <- disconnect[IO](client)
       } yield ()).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
@@ -177,13 +177,13 @@ class SFtpTest extends WordSpec with Matchers {
 
     "rm directory" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
-      val path = home.resolve("dir-to-delete")
+      val path = home.resolve("dir1/dir-to-delete")
 
       Files.createDirectory(path)
 
       (for {
         client <- connect[IO](settings)
-        _ <- rmdir[IO](client)("/dir-to-delete")
+        _ <- rmdir[IO](client)("/dir1/dir-to-delete")
         _ <- disconnect[IO](client)
       } yield ()).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>

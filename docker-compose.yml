@@ -6,8 +6,8 @@ services:
     ports:
       - "2222:22"
     volumes:
-      - ./src/test/resources/sftp/home/foo:/home/foo
-    command: foo:foo:1001
+      - ./ftp-home/sftp/home/foo:/home/foo
+    command: foo:foo:777
 
   ftp:
     image: stilliard/pure-ftpd:latest
@@ -15,8 +15,8 @@ services:
       - "2121:21"
       - "30000-30009:30000-30009"
     volumes:
-      - ./src/test/resources/ftp/home:/home/username/
-      - ./src/test/resources/ftp/:/etc/ssl/private/
+      - ./ftp-home/ftp/home:/home/username/
+      - ./ftp-home/ftp/:/etc/ssl/private/
     environment:
       PUBLICHOST: "localhost"
       FTP_USER_NAME: username

@@ -19,7 +19,7 @@ trait BaseFtpTest extends WordSpec with Matchers {
 
   val settings: FtpSettings
 
-  val home = Paths.get("src", "test", "resources", "ftp", "home")
+  val home = Paths.get("ftp-home/ftp/home")
 
   "Ftp" should {
     "invalid credentials" in {
