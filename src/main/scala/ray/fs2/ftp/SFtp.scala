@@ -9,13 +9,13 @@ import cats.syntax.applicativeError._
 import cats.syntax.functor._
 import fs2.Stream
 import net.schmizz.sshj.SSHClient
-import net.schmizz.sshj.sftp.{FileAttributes, OpenMode, RemoteResourceInfo, Response, SFTPClient, SFTPException}
+import net.schmizz.sshj.sftp.{FileAttributes, OpenMode, RemoteResourceFilter, RemoteResourceInfo, Response, SFTPClient, SFTPException}
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import net.schmizz.sshj.userauth.keyprovider.OpenSSHKeyFile
 import net.schmizz.sshj.userauth.password.PasswordUtils
 import net.schmizz.sshj.xfer.FilePermission._
 import ray.fs2.ftp.settings.{KeyFileSftpIdentity, RawKeySftpIdentity, SFtpSettings, SftpIdentity}
-
+import cats.syntax.either._
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
@@ -65,8 +65,10 @@ object SFtp {
 
   def listFiles[F[_]](client: SFTPClient)(basePath: String, predicate: FtpFile => Boolean = _ => true)(implicit F: Async[F]): fs2.Stream[F, FtpFile] = {
     val path = if (!basePath.isEmpty && basePath.head != '/') s"/$basePath" else basePath
-
-    fs2.Stream.eval(F.delay(client.ls(path, (r: RemoteResourceInfo) => predicate(SftpFileOps(r))).asScala))
+    val filter = new RemoteResourceFilter {
+      override def accept(r: RemoteResourceInfo): Boolean =  predicate(SftpFileOps(r))
+    }
+    fs2.Stream.eval(F.delay(client.ls(path, filter).asScala))
       .flatMap(Stream.emits)
       .flatMap(f => if (f.isDirectory) listFiles(client)(f.getPath) else Stream(SftpFileOps(f)))
       .recoverWith{

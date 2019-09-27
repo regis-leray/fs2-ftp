@@ -3,7 +3,7 @@ package ray.fs2.ftp
 import java.nio.file.{Files, Paths}
 
 import cats.effect.Resource.fromAutoCloseable
-import cats.effect.{ContextShift, IO}
+import cats.effect.{ContextShift, IO, Resource}
 import net.schmizz.sshj.{DefaultConfig, SSHClient}
 import org.scalatest.{Matchers, WordSpec}
 import ray.fs2.ftp.SFtp._
@@ -99,8 +99,9 @@ class SFtpTest extends WordSpec with Matchers {
         _ <- disconnect[IO](client)
       } yield tmp).map(Files.size).unsafeRunSync() shouldBe >(0L)
 
-      fromAutoCloseable(IO(Source.fromFile(tmp.toFile)))
-        .use(s => IO(s.mkString)).unsafeRunSync() shouldBe
+
+      Resource.make(IO(Source.fromFile(tmp.toFile)))(s => IO(s.close()))
+        .use(s =>IO(s.mkString)).unsafeRunSync() shouldBe
        """|Hello world !!!
           |this is a beautiful day""".stripMargin
     }
@@ -218,8 +219,8 @@ class SFtpTest extends WordSpec with Matchers {
         case Right(_) =>
       }
 
-      fromAutoCloseable(IO(Source.fromFile(path.toFile)))
-        .use(s => IO(s.mkString)).unsafeRunSync() shouldBe "Hello F World"
+      Resource.make(IO(Source.fromFile(path.toFile)))(s => IO(s.close()))
+        .use(s =>IO(s.mkString)).unsafeRunSync() shouldBe "Hello F World"
 
       Files.delete(path)
     }

@@ -2,6 +2,9 @@
 // Release
 import ReleaseTransformations._
 
+lazy val scala212 = "2.12.10"
+lazy val scala211 = "2.11.12"
+
 lazy val `fs2-ftp` = project
   .in(file("."))
   .settings(
@@ -18,14 +21,16 @@ lazy val `fs2-ftp` = project
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
 
     publishMavenStyle := true,
+    // crossScalaVersions must be set to Nil on the aggregating project
+    crossScalaVersions := List(scala212, scala211),
+    scalaVersion := scala212,
 
-    scalaVersion := "2.12.9",
     scalacOptions ++= Seq(
       "-encoding", "UTF-8",
       "-unchecked",
       "-deprecation",
       "-feature",
-      "-Xlint", "-Xfatal-warnings",
+      "-Xlint", //"-Xfatal-warnings",
       "-language:higherKinds",
       "-Ypartial-unification",
       "-language:postfixOps"
@@ -42,18 +47,20 @@ lazy val `fs2-ftp` = project
 
     releasePublishArtifactsAction := PgpKeys.publishSigned.value,
 
+    // don't use sbt-release's cross facility
+    releaseCrossBuild := false,
     releaseProcess := Seq[ReleaseStep](
       checkSnapshotDependencies,
       inquireVersions,
       runClean,
-      releaseStepCommandAndRemaining("^ compile"),
+      releaseStepCommandAndRemaining("+compile"),
       setReleaseVersion,
       commitReleaseVersion,
       tagRelease,
-      releaseStepCommandAndRemaining("^ publishSigned"),
+      releaseStepCommandAndRemaining("+publishSigned"),
       setNextVersion,
       commitNextVersion,
-      releaseStepCommand("^ sonatypeReleaseAll"),
+      releaseStepCommand("+sonatypeReleaseAll"),
       pushChanges
     ),
   )
