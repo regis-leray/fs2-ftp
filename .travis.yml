@@ -23,5 +23,5 @@ cache:
 script:
   - set -e -o pipefail
   - docker-compose up -d
-  - sbt ++$TRAVIS_SCALA_VERSION coverage test coverageReport coverageAggregate
+  - sbt ++$TRAVIS_SCALA_VERSION coverage +test coverageReport coverageAggregate
   - bash <(curl -s https://codecov.io/bash)

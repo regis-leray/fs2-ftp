@@ -9,6 +9,8 @@ Setup
 -----
 
 ```
+//support scala 2.11 / 2.12
+
 libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.1.0"
 ```
 

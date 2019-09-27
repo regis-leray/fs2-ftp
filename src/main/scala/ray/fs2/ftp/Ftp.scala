@@ -7,9 +7,9 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import fs2.Stream
-import org.apache.commons.net.ftp.{FTP, FTPClient, FTPFile, FTPSClient}
+import org.apache.commons.net.ftp.{FTP, FTPClient, FTPFile, FTPFileFilter, FTPSClient}
 import ray.fs2.ftp.settings.FtpSettings
-
+import cats.syntax.either._
 import scala.concurrent.ExecutionContext
 
 object Ftp {
@@ -69,11 +69,12 @@ object Ftp {
 
   def listFiles[F[_]](client: FTPClient)(basePath: String, predicate: FtpFile => Boolean = _ => true)(implicit F: Async[F]): Stream[F, FtpFile] = {
     val rootPath = if (!basePath.isEmpty && basePath.head != '/') s"/$basePath" else basePath
+    val filter = new FTPFileFilter {
+      override def accept(file: FTPFile): Boolean = predicate(FtpFileOps(file))
+    }
 
-    fs2.Stream.eval(F.delay(client.listFiles(rootPath, (file: FTPFile) => {
-      predicate(FtpFileOps(file))
-    }).toList))
-      .flatMap(Stream.emits)
+    fs2.Stream.eval(F.delay(client.listFiles(rootPath, filter).toList))
+      .flatMap(Stream.emits(_))
       .flatMap { f =>
         if (f.isDirectory)
           listFiles(client)(f.getName)
