@@ -2,7 +2,6 @@ package ray.fs2.ftp
 
 import java.nio.file.{Files, Paths}
 
-import cats.effect.Resource.fromAutoCloseable
 import cats.effect.{ContextShift, IO, Resource}
 import net.schmizz.sshj.{DefaultConfig, SSHClient}
 import org.scalatest.{Matchers, WordSpec}

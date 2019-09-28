@@ -2,7 +2,6 @@ package ray.fs2.ftp
 
 import java.nio.file.{Files, Paths}
 
-import cats.effect.Resource.fromAutoCloseable
 import cats.effect.{ContextShift, IO, Resource}
 import org.scalatest.{Matchers, WordSpec}
 import ray.fs2.ftp.Ftp._
@@ -10,7 +9,7 @@ import ray.fs2.ftp.settings.FtpCredentials.credentials
 import ray.fs2.ftp.settings.FtpSettings
 
 import scala.concurrent.ExecutionContext
-import scala.io.{BufferedSource, Source}
+import scala.io.Source
 
 trait BaseFtpTest extends WordSpec with Matchers {
 
