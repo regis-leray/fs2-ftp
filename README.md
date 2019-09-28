@@ -27,7 +27,7 @@ import ray.fs2.ftp.Ftp._
 // FTP
 val settings = FtpSettings("127.0.0.1", 21, credentials("foo", "bar"))
 // FTPS
-val settings = FtpSettings.secure("127.0.0.1", 21, credentials("foo", "bar"))
+val settings = FtpsSettings("127.0.0.1", 21, credentials("foo", "bar"))
 
 (for {
         client <- connect[IO](settings)

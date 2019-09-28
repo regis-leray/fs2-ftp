@@ -81,8 +81,10 @@ object settings {
   object FtpSettings {
     def apply(host: String, port: Int, creds: FtpCredentials): FtpSettings =
       new FtpSettings(host, port, creds, true, true, _ => (), None, false)
+  }
 
-    def secure(host: String, port: Int, creds: FtpCredentials): FtpSettings =
+  object FtpsSettings{
+    def apply(host: String, port: Int, creds: FtpCredentials): FtpSettings =
       new FtpSettings(host, port, creds, true, true, _ => (), None, true)
   }
 
