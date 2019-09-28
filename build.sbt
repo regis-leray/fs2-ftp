@@ -21,7 +21,7 @@ lazy val `fs2-ftp` = project
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
 
     publishMavenStyle := true,
-    // crossScalaVersions must be set to Nil on the aggregating project
+
     crossScalaVersions := List(scala212, scala211),
     scalaVersion := scala212,
 
@@ -30,7 +30,7 @@ lazy val `fs2-ftp` = project
       "-unchecked",
       "-deprecation",
       "-feature",
-      "-Xlint", //"-Xfatal-warnings",
+      "-Xlint", "-Xfatal-warnings",
       "-language:higherKinds",
       "-Ypartial-unification",
       "-language:postfixOps"

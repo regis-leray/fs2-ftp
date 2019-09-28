@@ -9,7 +9,7 @@ import cats.syntax.monadError._
 import fs2.Stream
 import org.apache.commons.net.ftp.{FTP, FTPClient, FTPFile, FTPFileFilter, FTPSClient}
 import ray.fs2.ftp.settings.FtpSettings
-import cats.syntax.either._
+
 import scala.concurrent.ExecutionContext
 
 object Ftp {

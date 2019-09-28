@@ -15,11 +15,10 @@ import net.schmizz.sshj.userauth.keyprovider.OpenSSHKeyFile
 import net.schmizz.sshj.userauth.password.PasswordUtils
 import net.schmizz.sshj.xfer.FilePermission._
 import ray.fs2.ftp.settings.{KeyFileSftpIdentity, RawKeySftpIdentity, SFtpSettings, SftpIdentity}
-import cats.syntax.either._
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
-object SFtp {
+object SFtp extends EitherSupport {
   def connect[F[_]](settings: SFtpSettings)(implicit ssh: SSHClient, F: Async[F]): F[SFTPClient] = F.delay {
     import settings._
 
@@ -66,12 +65,12 @@ object SFtp {
   def listFiles[F[_]](client: SFTPClient)(basePath: String, predicate: FtpFile => Boolean = _ => true)(implicit F: Async[F]): fs2.Stream[F, FtpFile] = {
     val path = if (!basePath.isEmpty && basePath.head != '/') s"/$basePath" else basePath
     val filter = new RemoteResourceFilter {
-      override def accept(r: RemoteResourceInfo): Boolean =  predicate(SftpFileOps(r))
+      override def accept(r: RemoteResourceInfo): Boolean = predicate(SftpFileOps(r))
     }
     fs2.Stream.eval(F.delay(client.ls(path, filter).asScala))
       .flatMap(Stream.emits)
       .flatMap(f => if (f.isDirectory) listFiles(client)(f.getPath) else Stream(SftpFileOps(f)))
-      .recoverWith{
+      .recoverWith {
         case ex: SFTPException if ex.getStatusCode == Response.StatusCode.NO_SUCH_FILE => fs2.Stream.empty.covary[F]
         case other => fs2.Stream.raiseError[F](other)
       }
@@ -105,7 +104,7 @@ object SFtp {
 
   def mkdirs[F[_]](client: SFTPClient)(path: String)(implicit F: Async[F]): F[Unit] = F.delay(client.mkdirs(path))
 
-  def upload[F[_] : ConcurrentEffect: ContextShift](client: SFTPClient)(path: String, source: fs2.Stream[F, Byte])(implicit F: Async[F], ec: ExecutionContext): F[Unit] = (for {
+  def upload[F[_] : ConcurrentEffect : ContextShift](client: SFTPClient)(path: String, source: fs2.Stream[F, Byte])(implicit F: Async[F], ec: ExecutionContext): F[Unit] = (for {
     remoteFile <- Stream.eval(F.delay(client.open(path, java.util.EnumSet.of(OpenMode.WRITE, OpenMode.CREAT))))
 
     os: java.io.OutputStream = new remoteFile.RemoteFileOutputStream() {
