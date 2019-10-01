@@ -83,10 +83,10 @@ object SFtp extends EitherSupport {
         r.map(r => SftpFileOps(path, r)).toOption
       )
 
-  def readFile[F[_]](client: SFTPClient, chunkSize: Int = 2048)(path: String)(implicit ec: ExecutionContext, cs: ContextShift[F], F: Async[F]): fs2.Stream[F, Byte] = for {
+  def readFile[F[_]](client: SFTPClient, chunkSize: Int = 10 * 1024)(path: String)(implicit ec: ExecutionContext, cs: ContextShift[F], F: Async[F]): fs2.Stream[F, Byte] = for {
     remoteFile <- Stream.eval(F.delay(client.open(path, java.util.EnumSet.of(OpenMode.READ))))
 
-    is: java.io.InputStream = new remoteFile.RemoteFileInputStream(0L) {
+    is: java.io.InputStream = new remoteFile.ReadAheadRemoteFileInputStream(64) {
       override def close(): Unit =
         try {
           super.close()
