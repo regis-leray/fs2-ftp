@@ -1,13 +1,14 @@
 package ray.fs2.ftp
 
+import java.io.{FileNotFoundException, InputStream}
 import java.nio.file.attribute.PosixFilePermission
 
-import cats.effect.{Async, ConcurrentEffect, ContextShift}
+import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import fs2.Stream
-import org.apache.commons.net.ftp.{FTP, FTPClient, FTPFile, FTPFileFilter, FTPSClient}
+import org.apache.commons.net.ftp._
 import ray.fs2.ftp.settings.FtpSettings
 
 import scala.concurrent.ExecutionContext
@@ -48,8 +49,12 @@ object Ftp {
     )
 
   def readFile[F[_]](client: FTPClient, chunkSize: Int = 2048)(path: String)(implicit ec: ExecutionContext, cs: ContextShift[F], F: Async[F]): fs2.Stream[F, Byte] = {
-    val stream = client.retrieveFileStream(path)
-    fs2.io.readInputStream(F.delay(stream), chunkSize, ec)
+    val is = F.delay(Option(client.retrieveFileStream(path)))
+      .flatMap(_.fold(F.raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(F.pure) )
+
+    fs2.io.readInputStream(
+      is, chunkSize, Blocker.liftExecutionContext(ec)
+    )
   }
 
   def rm[F[_]](client: FTPClient)(path: String)(implicit F: Async[F]): F[Unit] =
@@ -83,13 +88,14 @@ object Ftp {
       }
   }
 
-  def upload[F[_] : ConcurrentEffect](client: FTPClient)(path: String, source: fs2.Stream[F, Byte])(implicit F: Async[F]): F[Unit] =
+  def upload[F[_] : ConcurrentEffect](client: FTPClient)(path: String, source: fs2.Stream[F, Byte])(implicit F: Async[F]): F[Unit] = {
     source.through(fs2.io.toInputStream)
       .evalMap(is =>
         F.delay(client.storeFile(path, is))
       )
       .ensure(new IllegalArgumentException(s"Path is invalid. Cannot upload data to : $path"))(identity)
       .compile.drain
+  }
 
 
   object FtpFileOps {
@@ -110,7 +116,8 @@ object Ftp {
         PosixFilePermission.OTHERS_WRITE -> file.hasPermission(FTPFile.WORLD_ACCESS, FTPFile.WRITE_PERMISSION),
         PosixFilePermission.OTHERS_EXECUTE -> file.hasPermission(FTPFile.WORLD_ACCESS, FTPFile.EXECUTE_PERMISSION)
       ).collect {
-        case (perm, true) ⇒ perm
+        case (perm, true) => perm
       }.toSet
   }
+
 }

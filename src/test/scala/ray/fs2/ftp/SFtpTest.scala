@@ -2,7 +2,9 @@ package ray.fs2.ftp
 
 import java.nio.file.{Files, Paths}
 
-import cats.effect.{ContextShift, IO, Resource}
+import cats.effect.{Blocker, ContextShift, IO, Resource}
+import net.schmizz.sshj.sftp.Response.StatusCode
+import net.schmizz.sshj.sftp.SFTPException
 import net.schmizz.sshj.{DefaultConfig, SSHClient}
 import org.scalatest.{Matchers, WordSpec}
 import ray.fs2.ftp.SFtp._
@@ -17,7 +19,7 @@ class SFtpTest extends WordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.global
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  private val settings = SFtpSettings("127.0.0.1", port = 2222,  credentials("foo", "foo"))
+  private val settings = SFtpSettings("127.0.0.1", port = 2222, credentials("foo", "foo"))
 
   val home = Paths.get("ftp-home/sftp/home/foo")
 
@@ -42,7 +44,7 @@ class SFtpTest extends WordSpec with Matchers {
         case Right(_) =>
       }
 
-      attempt.right.get.close()
+      attempt.fold(throw _, _.close())
       sshClient.disconnect()
     }
 
@@ -63,7 +65,7 @@ class SFtpTest extends WordSpec with Matchers {
       (for {
         client <- connect[IO](settings)
         files <- listFiles[IO](client)("wrong-directory").compile.toList
-          _ <- disconnect[IO](client)
+        _ <- disconnect[IO](client)
       } yield files).unsafeRunSync() shouldBe Nil
     }
 
@@ -94,15 +96,15 @@ class SFtpTest extends WordSpec with Matchers {
 
       (for {
         client <- connect[IO](settings)
-        _ <- readFile[IO](client)("/notes.txt").through(fs2.io.file.writeAll(tmp, ec)).compile.drain
+        _ <- readFile[IO](client)("/notes.txt").through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec))).compile.drain
         _ <- disconnect[IO](client)
       } yield tmp).map(Files.size).unsafeRunSync() shouldBe >(0L)
 
 
       Resource.make(IO(Source.fromFile(tmp.toFile)))(s => IO(s.close()))
-        .use(s =>IO(s.mkString)).unsafeRunSync() shouldBe
-       """|Hello world !!!
-          |this is a beautiful day""".stripMargin
+        .use(s => IO(s.mkString)).unsafeRunSync() shouldBe
+        """|Hello world !!!
+           |this is a beautiful day""".stripMargin
     }
 
     "readFile does not exist" in {
@@ -112,11 +114,11 @@ class SFtpTest extends WordSpec with Matchers {
 
       (for {
         client <- connect[IO](settings)
-        _ <- readFile[IO](client)("/no-file.xml").through(fs2.io.file.writeAll(tmp, ec))
+        _ <- readFile[IO](client)("/no-file.xml").through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
           .compile.drain
           .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
       } yield tmp).attempt.unsafeRunSync() should matchPattern {
-        case Left(_) =>
+        case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
 
@@ -142,7 +144,7 @@ class SFtpTest extends WordSpec with Matchers {
         _ <- mkdirs[IO](client)("/dir1/users.csv")
         _ <- disconnect[IO](client)
       } yield ()).attempt.unsafeRunSync() should matchPattern {
-        case Left(_) =>
+        case Left(_: SFTPException) =>
       }
     }
 
@@ -171,7 +173,7 @@ class SFtpTest extends WordSpec with Matchers {
         _ <- rm[IO](client)("upload/dont-exist")
         _ <- disconnect[IO](client)
       } yield ()).attempt.unsafeRunSync() should matchPattern {
-        case Left(_) =>
+        case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
 
@@ -200,7 +202,7 @@ class SFtpTest extends WordSpec with Matchers {
         _ <- rmdir[IO](client)("/dont-exist")
         _ <- disconnect[IO](client)
       } yield ()).attempt.unsafeRunSync() should matchPattern {
-        case Left(_) =>
+        case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
 
@@ -219,7 +221,7 @@ class SFtpTest extends WordSpec with Matchers {
       }
 
       Resource.make(IO(Source.fromFile(path.toFile)))(s => IO(s.close()))
-        .use(s =>IO(s.mkString)).unsafeRunSync() shouldBe "Hello F World"
+        .use(s => IO(s.mkString)).unsafeRunSync() shouldBe "Hello F World"
 
       Files.delete(path)
     }
@@ -233,7 +235,7 @@ class SFtpTest extends WordSpec with Matchers {
         _ <- upload[IO](client)("/dont-exist/hello-world.txt", data)
         _ <- disconnect[IO](client)
       } yield ()).attempt.unsafeRunSync() should matchPattern {
-        case Left(_) =>
+        case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
   }

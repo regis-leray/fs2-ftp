@@ -1,9 +1,8 @@
-
-// Release
 import ReleaseTransformations._
 
-lazy val scala212 = "2.12.10"
 lazy val scala211 = "2.11.12"
+lazy val scala213 = "2.13.0"
+lazy val scala212 = "2.12.10"
 
 lazy val `fs2-ftp` = project
   .in(file("."))
@@ -22,8 +21,8 @@ lazy val `fs2-ftp` = project
 
     publishMavenStyle := true,
 
-    crossScalaVersions := List(scala212, scala211),
-    scalaVersion := scala212,
+    crossScalaVersions := List(scala213, scala212, scala211),
+    scalaVersion := scala213,
 
     scalacOptions ++= Seq(
       "-encoding", "UTF-8",
@@ -32,9 +31,10 @@ lazy val `fs2-ftp` = project
       "-feature",
       "-Xlint", "-Xfatal-warnings",
       "-language:higherKinds",
-      "-Ypartial-unification",
       "-language:postfixOps"
-    ),
+    ) ++ PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
+      case Some((2, n)) if n < 13  => Seq("-Ypartial-unification")
+    }.toList.flatten,
 
     credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential"),
 
@@ -65,8 +65,9 @@ lazy val `fs2-ftp` = project
     ),
   )
   .settings(libraryDependencies ++= Seq(
-    "co.fs2" %% "fs2-core" % "1.0.5", // For cats 1.5.0 and cats-effect 1.2.0
-    "co.fs2" %% "fs2-io" % "1.0.5",
+    "co.fs2" %% "fs2-core" % "2.0.1",
+    "co.fs2" %% "fs2-io" % "2.0.1",
+    "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
     "com.hierynomus" % "sshj" % "0.27.0",
     "commons-net" % "commons-net" % "3.6",
 
