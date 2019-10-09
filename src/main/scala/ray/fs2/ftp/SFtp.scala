@@ -1,24 +1,26 @@
 package ray.fs2.ftp
 
-import java.io.File
+import java.io._
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermission._
 
-import cats.effect.{Async, ConcurrentEffect, ContextShift}
+import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift}
 import cats.syntax.applicativeError._
 import cats.syntax.functor._
 import fs2.Stream
+import fs2.Stream._
 import net.schmizz.sshj.SSHClient
-import net.schmizz.sshj.sftp.{FileAttributes, OpenMode, RemoteResourceFilter, RemoteResourceInfo, Response, SFTPClient, SFTPException}
+import net.schmizz.sshj.sftp._
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import net.schmizz.sshj.userauth.keyprovider.OpenSSHKeyFile
 import net.schmizz.sshj.userauth.password.PasswordUtils
 import net.schmizz.sshj.xfer.FilePermission._
 import ray.fs2.ftp.settings.{KeyFileSftpIdentity, RawKeySftpIdentity, SFtpSettings, SftpIdentity}
-import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext
 
-object SFtp extends EitherSupport {
+import scala.concurrent.ExecutionContext
+import scala.jdk.CollectionConverters._
+
+object SFtp {
   def connect[F[_]](settings: SFtpSettings)(implicit ssh: SSHClient, F: Async[F]): F[SFTPClient] = F.delay {
     import settings._
 
@@ -67,6 +69,7 @@ object SFtp extends EitherSupport {
     val filter = new RemoteResourceFilter {
       override def accept(r: RemoteResourceInfo): Boolean = predicate(SftpFileOps(r))
     }
+
     fs2.Stream.eval(F.delay(client.ls(path, filter).asScala))
       .flatMap(Stream.emits)
       .flatMap(f => if (f.isDirectory) listFiles(client)(f.getPath) else Stream(SftpFileOps(f)))
@@ -95,7 +98,7 @@ object SFtp extends EitherSupport {
         }
     }
 
-    input <- fs2.io.readInputStream(F.pure(is), chunkSize, ec)
+    input <- fs2.io.readInputStream(F.pure(is), chunkSize, Blocker.liftExecutionContext(ec))
   } yield input
 
   def rm[F[_]](client: SFTPClient)(path: String)(implicit F: Async[F]): F[Unit] = F.delay(client.rm(path))
@@ -116,7 +119,7 @@ object SFtp extends EitherSupport {
         }
       }
     }
-    _ <- source.through(fs2.io.writeOutputStream(F.pure(os), ec))
+    _ <- source.through(fs2.io.writeOutputStream(F.pure(os), Blocker.liftExecutionContext(ec)))
   } yield ()).compile.drain
 
   object SftpFileOps {
