@@ -27,79 +27,59 @@ class SFtpTest extends WordSpec with Matchers {
     "connect with invalid credentials" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      connect[IO](settings.copy(credentials = credentials("invalid", "invalid")))
+      connect[IO](settings.copy(credentials = credentials("invalid", "invalid"))).use(_ => IO.unit)
         .attempt.unsafeRunSync() should matchPattern {
         case Left(_) =>
       }
-
-      sshClient.disconnect()
     }
 
     "connect with valid credentials" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      val attempt = connect[IO](settings).attempt.unsafeRunSync()
-
-      attempt should matchPattern {
+      connect[IO](settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
-
-      attempt.fold(throw _, _.close())
-      sshClient.disconnect()
     }
 
     "listFiles" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        files <- listFiles[IO](client)("/").compile.toList
-        _ <- disconnect[IO](client)
-      } yield files)
-        .unsafeRunSync().map(_.name) should contain allElementsOf List("notes.txt", "console.dump", "users.csv")
+      connect[IO](settings).use(
+        listFiles[IO]("/")(_).compile.toList
+      ).unsafeRunSync().map(_.name) should contain allElementsOf List("notes.txt", "console.dump", "users.csv")
     }
 
     "listFiles with wrong directory" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        files <- listFiles[IO](client)("wrong-directory").compile.toList
-        _ <- disconnect[IO](client)
-      } yield files).unsafeRunSync() shouldBe Nil
+      connect[IO](settings).use(
+        listFiles[IO]("wrong-directory")(_).compile.toList
+      ).unsafeRunSync() shouldBe Nil
     }
 
     "stat file" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        file <- stat[IO](client)("/dir1/users.csv")
-        _ <- disconnect[IO](client)
-      } yield file).unsafeRunSync().map(_.name) shouldBe Some("users.csv")
+      connect[IO](settings).use(
+        stat[IO]("/dir1/users.csv")
+      ).unsafeRunSync().map(_.name) shouldBe Some("users.csv")
     }
 
     "stat file does not exist" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        file <- stat[IO](client)("/wrong-path.xml")
-        _ <- disconnect[IO](client)
-      } yield file).unsafeRunSync().map(_.name) shouldBe None
+      connect[IO](settings).use(
+        stat[IO]("/wrong-path.xml")
+      ).unsafeRunSync().map(_.name) shouldBe None
     }
 
     "readFile" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
-
       val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- readFile[IO](client)("/notes.txt").through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec))).compile.drain
-        _ <- disconnect[IO](client)
-      } yield tmp).map(Files.size).unsafeRunSync() shouldBe >(0L)
-
+      connect[IO](settings).use(
+        readFile[IO]("/notes.txt")(_).through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec))).compile.drain
+      ).unsafeRunSync()
 
       Resource.make(IO(Source.fromFile(tmp.toFile)))(s => IO(s.close()))
         .use(s => IO(s.mkString)).unsafeRunSync() shouldBe
@@ -109,15 +89,12 @@ class SFtpTest extends WordSpec with Matchers {
 
     "readFile does not exist" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
-
       val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- readFile[IO](client)("/no-file.xml").through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
+      connect[IO](settings).use{
+        readFile[IO]("/no-file.xml")(_).through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
           .compile.drain
-          .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
-      } yield tmp).attempt.unsafeRunSync() should matchPattern {
+      }.attempt.unsafeRunSync() should matchPattern {
         case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
@@ -125,11 +102,9 @@ class SFtpTest extends WordSpec with Matchers {
     "mkdirs directory" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- mkdirs[IO](client)("/dir1/new-dir")
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        mkdirs[IO]("/dir1/new-dir")
+      ).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
 
@@ -139,11 +114,9 @@ class SFtpTest extends WordSpec with Matchers {
     "mkdirs fail when invalid path" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- mkdirs[IO](client)("/dir1/users.csv")
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        mkdirs[IO]("/dir1/users.csv")
+      ).attempt.unsafeRunSync() should matchPattern {
         case Left(_: SFTPException) =>
       }
     }
@@ -154,11 +127,9 @@ class SFtpTest extends WordSpec with Matchers {
       val path = home.resolve("dir1/to-delete.txt")
       Files.createFile(path)
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- rm[IO](client)("/dir1/to-delete.txt")
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        rm[IO]("/dir1/to-delete.txt")
+      ).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
 
@@ -168,40 +139,34 @@ class SFtpTest extends WordSpec with Matchers {
     "rm fail when invalid path" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- rm[IO](client)("upload/dont-exist")
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        rm[IO]("upload/dont-exist")
+      ).attempt.unsafeRunSync() should matchPattern {
         case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
 
-    "rm directory" in {
+    "rmdir directory" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
       val path = home.resolve("dir1/dir-to-delete")
 
       Files.createDirectory(path)
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- rmdir[IO](client)("/dir1/dir-to-delete")
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        rmdir[IO]("/dir1/dir-to-delete")
+      ).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
 
       Files.exists(path) shouldBe false
     }
 
-    "rm fail invalid directory" in {
+    "rmdir fail invalid directory" in {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- rmdir[IO](client)("/dont-exist")
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        rmdir[IO]("/dont-exist")
+      ).attempt.unsafeRunSync() should matchPattern {
         case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
@@ -212,11 +177,9 @@ class SFtpTest extends WordSpec with Matchers {
       val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
       val path = home.resolve("dir1/hello-world.txt")
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- upload[IO](client)("/dir1/hello-world.txt", data)
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        upload("/dir1/hello-world.txt", data)
+      ).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
 
@@ -230,11 +193,9 @@ class SFtpTest extends WordSpec with Matchers {
       implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
       val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
 
-      (for {
-        client <- connect[IO](settings)
-        _ <- upload[IO](client)("/dont-exist/hello-world.txt", data)
-        _ <- disconnect[IO](client)
-      } yield ()).attempt.unsafeRunSync() should matchPattern {
+      connect[IO](settings).use(
+        upload("/dont-exist/hello-world.txt", data)
+      ).attempt.unsafeRunSync() should matchPattern {
         case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }

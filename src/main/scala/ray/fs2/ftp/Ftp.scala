@@ -3,7 +3,7 @@ package ray.fs2.ftp
 import java.io.{FileNotFoundException, InputStream}
 import java.nio.file.attribute.PosixFilePermission
 
-import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift}
+import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift, Resource}
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
@@ -14,7 +14,7 @@ import ray.fs2.ftp.settings.FtpSettings
 import scala.concurrent.ExecutionContext
 
 object Ftp {
-  def connect[F[_]](settings: FtpSettings)(implicit F: Async[F]): F[FTPClient] = F.delay {
+  def connect[F[_]](settings: FtpSettings)(implicit F: Async[F]): Resource[F, FTPClient] = Resource.make{ F.delay{
     val ftpClient = if (settings.secure) new FTPSClient() else new FTPClient()
     settings.proxy.foreach(ftpClient.setProxy)
     ftpClient.connect(settings.host, settings.port)
@@ -30,25 +30,25 @@ object Ftp {
       ftpClient.enterLocalPassiveMode()
     }
 
-    success -> ftpClient
-  }.ensure(new IllegalArgumentException(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
+    success -> ftpClient}.ensure(new IllegalArgumentException(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
     .map(_._2)
+  }{ client =>
+    for {
+      connected <- F.delay(client.isConnected)
+      _ <- if (!connected) F.pure(()) else
+        F.delay {
+          client.logout()
+          client.disconnect()
+        }
+    } yield ()
+  }
 
-  def disconnect[F[_]](client: FTPClient)(implicit F: Async[F]): F[Unit] = for {
-    connected <- F.delay(client.isConnected)
-    _ <- if (!connected) F.pure(()) else
-      F.delay {
-        client.logout()
-        client.disconnect()
-      }
-  } yield ()
-
-  def stat[F[_]](client: FTPClient)(path: String)(implicit F: Async[F]): F[Option[FtpFile]] =
+  def stat[F[_]](path: String)(client: FTPClient)(implicit F: Async[F]): F[Option[FtpFile]] =
     F.delay(
       Option(client.mlistFile(path)).map(FtpFileOps.apply)
     )
 
-  def readFile[F[_]](client: FTPClient, chunkSize: Int = 2048)(path: String)(implicit ec: ExecutionContext, cs: ContextShift[F], F: Async[F]): fs2.Stream[F, Byte] = {
+  def readFile[F[_]](path: String, chunkSize: Int = 2048)(client: FTPClient)(implicit ec: ExecutionContext, cs: ContextShift[F], F: Async[F]): fs2.Stream[F, Byte] = {
     val is = F.delay(Option(client.retrieveFileStream(path)))
       .flatMap(_.fold(F.raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(F.pure) )
 
@@ -57,22 +57,22 @@ object Ftp {
     )
   }
 
-  def rm[F[_]](client: FTPClient)(path: String)(implicit F: Async[F]): F[Unit] =
+  def rm[F[_]](path: String)(client: FTPClient)(implicit F: Async[F]): F[Unit] =
     F.delay(client.deleteFile(path))
       .ensure(new IllegalArgumentException(s"Path is invalid. Cannot delete file : $path"))(identity)
       .map(_ => ())
 
-  def rmdir[F[_]](client: FTPClient)(path: String)(implicit F: Async[F]): F[Unit] =
+  def rmdir[F[_]](path: String)(client: FTPClient)(implicit F: Async[F]): F[Unit] =
     F.delay(client.removeDirectory(path))
       .ensure(new IllegalArgumentException(s"Path is invalid. Cannot delete directory : $path"))(identity)
       .map(_ => ())
 
-  def mkdir[F[_]](client: FTPClient)(path: String)(implicit F: Async[F]): F[Unit] =
+  def mkdir[F[_]](path: String)(client: FTPClient)(implicit F: Async[F]): F[Unit] =
     F.delay(client.makeDirectory(path))
       .ensure(new IllegalArgumentException(s"Path is invalid. Cannot create directory : $path"))(identity)
       .map(_ => ())
 
-  def listFiles[F[_]](client: FTPClient)(basePath: String, predicate: FtpFile => Boolean = _ => true)(implicit F: Async[F]): Stream[F, FtpFile] = {
+  def listFiles[F[_]](basePath: String, predicate: FtpFile => Boolean = _ => true)(client: FTPClient)(implicit F: Async[F]): Stream[F, FtpFile] = {
     val rootPath = if (!basePath.isEmpty && basePath.head != '/') s"/$basePath" else basePath
     val filter = new FTPFileFilter {
       override def accept(file: FTPFile): Boolean = predicate(FtpFileOps(file))
@@ -82,13 +82,13 @@ object Ftp {
       .flatMap(Stream.emits(_))
       .flatMap { f =>
         if (f.isDirectory)
-          listFiles(client)(f.getName)
+          listFiles(f.getName)(client)
         else
           Stream(FtpFileOps(f))
       }
   }
 
-  def upload[F[_] : ConcurrentEffect](client: FTPClient)(path: String, source: fs2.Stream[F, Byte])(implicit F: Async[F]): F[Unit] = {
+  def upload[F[_] : ConcurrentEffect](path: String, source: fs2.Stream[F, Byte])(client: FTPClient)(implicit F: Async[F]): F[Unit] = {
     source.through(fs2.io.toInputStream)
       .evalMap(is =>
         F.delay(client.storeFile(path, is))
