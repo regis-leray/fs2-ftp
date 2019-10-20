@@ -22,67 +22,48 @@ trait BaseFtpTest extends WordSpec with Matchers {
 
   val home = Paths.get("ftp-home/ftp/home")
 
-
   "invalid credentials" in {
     connect[IO](settings.copy(credentials = credentials("test", "test")))
+      .use(_ => IO.unit)
       .attempt.unsafeRunSync() should matchPattern {
       case Left(_) =>
     }
   }
 
   "valid credentials" in {
-    val attempt = connect[IO](settings).attempt.unsafeRunSync()
-
-    attempt should matchPattern {
-      case Right(_) =>
-    }
-
-    attempt.fold(throw _, _.logout())
-    attempt.fold(throw _, _.disconnect())
+    connect[IO](settings).use(c => IO.pure(c.isConnected)).unsafeRunSync() shouldBe true
   }
 
   "listFiles" in {
-    (for {
-      client <- connect[IO](settings)
-      files <- listFiles[IO](client)("/").compile.toList
-      _ <- disconnect[IO](client)
-    } yield files)
-      .unsafeRunSync().map(_.name) should contain allElementsOf List("notes.txt", "console.dump", "users.csv")
+    connect[IO](settings).use{
+      listFiles[IO]("/")(_).compile.toList
+    }.unsafeRunSync().map(_.name) should contain allElementsOf List("notes.txt", "console.dump", "users.csv")
   }
 
   "listFiles with wrong directory" in {
-    (for {
-      client <- connect[IO](settings)
-      files <- listFiles[IO](client)("/wrong-directory").compile.toList
-      _ <- disconnect[IO](client)
-    } yield files)
-      .unsafeRunSync() shouldBe Nil
+    connect[IO](settings).use{
+      listFiles[IO]("/wrong-directory")(_).compile.toList
+    } .unsafeRunSync() shouldBe Nil
   }
 
   "stat file" in {
-    (for {
-      client <- connect[IO](settings)
-      file <- stat[IO](client)("/dir1/users.csv")
-      _ <- disconnect[IO](client)
-    } yield file).unsafeRunSync().map(_.name) shouldBe Some("users.csv")
+    connect[IO](settings).use{
+      stat[IO]("/dir1/users.csv")
+    } .unsafeRunSync().map(_.name) shouldBe Some("users.csv")
   }
 
   "stat file does not exist" in {
-    (for {
-      client <- connect[IO](settings)
-      file <- stat[IO](client)("/wrong-path.xml")
-        .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
-    } yield file).unsafeRunSync().map(_.name) shouldBe None
+    connect[IO](settings).use(
+      stat[IO]("/wrong-path.xml")
+    ).unsafeRunSync().map(_.name) shouldBe None
   }
 
   "readFile" in {
     val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-    (for {
-      client <- connect[IO](settings)
-      _ <- readFile[IO](client)("/notes.txt").through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec))).compile.drain
-      _ <- disconnect[IO](client)
-    } yield tmp).map(Files.size).unsafeRunSync() shouldBe >(0L)
+    connect[IO](settings).use(
+      readFile[IO]("/notes.txt")(_).through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec))).compile.drain
+    ).unsafeRunSync()
 
     Resource.make(IO(Source.fromFile(tmp.toFile)))(s => IO(s.close()))
       .use(s => IO(s.mkString)).unsafeRunSync() shouldBe
@@ -93,23 +74,17 @@ trait BaseFtpTest extends WordSpec with Matchers {
   "readFile does not exist" in {
     val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-    (for {
-      client <- connect[IO](settings)
-      _ <- readFile[IO](client)("/no-file.xml").through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
+    connect[IO](settings).use{
+      readFile[IO]("/no-file.xml")(_).through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
         .compile.drain
-        .handleErrorWith { t =>
-          disconnect[IO](client).flatMap(_ => IO.raiseError(t))
-        }
-    } yield tmp).attempt.unsafeRunSync() should matchPattern {
+    }.attempt.unsafeRunSync() should matchPattern {
       case Left(_: FileNotFoundException) =>
     }
   }
   "mkdir directory" in {
-    (for {
-      client <- connect[IO](settings)
-      _ <- mkdir[IO](client)("/new-dir")
-      _ <- disconnect[IO](client)
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+    connect[IO](settings).use(
+      mkdir[IO]("/new-dir")
+    ).attempt.unsafeRunSync() should matchPattern {
       case Right(_) =>
     }
 
@@ -117,11 +92,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "mkdir fail when invalid path" in {
-    (for {
-      client <- connect[IO](settings)
-      _ <- mkdir[IO](client)("/dir1/users.csv")
-        .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+    connect[IO](settings).use(
+      mkdir[IO]("/dir1/users.csv")
+    ).attempt.unsafeRunSync() should matchPattern {
       case Left(_) =>
     }
   }
@@ -130,11 +103,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
     val path = home.resolve("to-delete.txt")
     Files.createFile(path)
 
-    (for {
-      client <- connect[IO](settings)
-      _ <- rm[IO](client)("/to-delete.txt")
-      _ <- disconnect[IO](client)
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+    connect[IO](settings).use(
+      rm[IO]("/to-delete.txt")
+    ).attempt.unsafeRunSync() should matchPattern {
       case Right(_) =>
     }
 
@@ -142,11 +113,10 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "rm fail when invalid path" in {
-    (for {
-      client <- connect[IO](settings)
-      _ <- rm[IO](client)("/dont-exist")
-        .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+
+    connect[IO](settings).use(
+      rm[IO]("/dont-exist")
+    ).attempt.unsafeRunSync() should matchPattern {
       case Left(_) =>
     }
   }
@@ -155,11 +125,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
     val path = home.resolve("dir-to-delete")
     Files.createDirectory(path)
 
-    (for {
-      client <- connect[IO](settings)
-      _ <- rmdir[IO](client)("/dir-to-delete")
-      _ <- disconnect[IO](client)
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+    connect[IO](settings).use(
+      rmdir[IO]("/dir-to-delete")
+    ).attempt.unsafeRunSync() should matchPattern {
       case Right(_) =>
     }
 
@@ -167,11 +135,10 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "rm fail invalid directory" in {
-    (for {
-      client <- connect[IO](settings)
-      _ <- rmdir[IO](client)("/dont-exist")
-        .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+
+    connect[IO](settings).use(
+      rmdir[IO]("/dont-exist")
+    ).attempt.unsafeRunSync() should matchPattern {
       case Left(_) =>
     }
   }
@@ -180,11 +147,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
     val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
     val path = home.resolve("hello-world.txt")
 
-    (for {
-      client <- connect[IO](settings)
-      _ <- upload[IO](client)("/hello-world.txt", data)
-      _ <- disconnect[IO](client)
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+    connect[IO](settings).use(
+      upload[IO]("/hello-world.txt", data)
+    ).attempt.unsafeRunSync() should matchPattern {
       case Right(_) =>
     }
 
@@ -197,13 +162,10 @@ trait BaseFtpTest extends WordSpec with Matchers {
   "upload fail when path is invalid" in {
     val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
 
-    (for {
-      client <- connect[IO](settings)
-      _ <- upload[IO](client)("/dont-exist/hello-world.txt", data)
-        .handleErrorWith { t => disconnect[IO](client).flatMap(_ => IO.raiseError(t)) }
-    } yield ()).attempt.unsafeRunSync() should matchPattern {
+    connect[IO](settings).use(
+      upload[IO]("/dont-exist/hello-world.txt", data)
+    ).attempt.unsafeRunSync() should matchPattern {
       case Left(_) =>
     }
   }
-
 }

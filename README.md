@@ -13,7 +13,7 @@ Setup
 ```
 //support scala 2.11 /  2.12 / 2.13
 
-libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.3.0"
+libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.4.0"
 ```
 
 How to use it ?
@@ -29,12 +29,10 @@ val settings = FtpSettings("127.0.0.1", 21, credentials("foo", "bar"))
 // FTPS
 val settings = FtpsSettings("127.0.0.1", 21, credentials("foo", "bar"))
 
-(for {
-        client <- connect[IO](settings)
-        files <- listFiles[IO](client)("/").compile.toList
-        _ <- disconnect[IO](client)
-      } yield files)      
- ```
+connect[IO](settings).use{
+  listFiles[IO]("/")(_).compile.toList
+}
+```
 
 * SFTP
 
@@ -45,11 +43,9 @@ import net.schmizz.sshj.{DefaultConfig, SSHClient}
 implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 val settings = SFtpSettings("127.0.0.1", 22, credentials("foo", "bar"))
 
-(for {
-        client <- connect[IO](settings)
-        files <- listFiles[IO](client)("/").compile.toList
-        _ <- disconnect[IO](client)
-      } yield files)      
+connect[IO](settings).use(
+  listFiles[IO]("/")(_).compile.toList
+)     
  ```
 
 ## LICENSE

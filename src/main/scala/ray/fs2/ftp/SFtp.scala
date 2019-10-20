@@ -4,7 +4,7 @@ import java.io._
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermission._
 
-import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift}
+import cats.effect.{Async, Blocker, ConcurrentEffect, ContextShift, Resource}
 import cats.syntax.applicativeError._
 import cats.syntax.functor._
 import fs2.Stream
@@ -21,7 +21,7 @@ import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
 
 object SFtp {
-  def connect[F[_]](settings: SFtpSettings)(implicit ssh: SSHClient, F: Async[F]): F[SFTPClient] = F.delay {
+  def connect[F[_]](settings: SFtpSettings)(implicit ssh: SSHClient, F: Async[F]): Resource[F, SFTPClient] = Resource.make(F.delay {
     import settings._
 
     if (!strictHostKeyChecking)
@@ -37,7 +37,10 @@ object SFtp {
     sftpIdentity.foreach(setIdentity(_, credentials.username))
 
     ssh.newSFTPClient()
-  }
+  })(client => F.delay {
+    client.close()
+    if (ssh.isConnected) ssh.disconnect()
+  })
 
   private[this] def setIdentity(identity: SftpIdentity, username: String)(implicit ssh: SSHClient): Unit = {
     def bats(array: Array[Byte]): String = new String(array, "UTF-8")
@@ -59,12 +62,7 @@ object SFtp {
     }
   }
 
-  def disconnect[F[_]](client: SFTPClient)(implicit ssh: SSHClient, F: Async[F]): F[Unit] = F.delay {
-    client.close()
-    if (ssh.isConnected) ssh.disconnect()
-  }
-
-  def listFiles[F[_]](client: SFTPClient)(basePath: String, predicate: FtpFile => Boolean = _ => true)(implicit F: Async[F]): fs2.Stream[F, FtpFile] = {
+  def listFiles[F[_]](basePath: String, predicate: FtpFile => Boolean = _ => true)(client: SFTPClient)(implicit F: Async[F]): fs2.Stream[F, FtpFile] = {
     val path = if (!basePath.isEmpty && basePath.head != '/') s"/$basePath" else basePath
     val filter = new RemoteResourceFilter {
       override def accept(r: RemoteResourceInfo): Boolean = predicate(SftpFileOps(r))
@@ -72,21 +70,21 @@ object SFtp {
 
     fs2.Stream.eval(F.delay(client.ls(path, filter).asScala))
       .flatMap(Stream.emits)
-      .flatMap(f => if (f.isDirectory) listFiles(client)(f.getPath) else Stream(SftpFileOps(f)))
+      .flatMap(f => if (f.isDirectory) listFiles(f.getPath)(client) else Stream(SftpFileOps(f)))
       .recoverWith {
         case ex: SFTPException if ex.getStatusCode == Response.StatusCode.NO_SUCH_FILE => fs2.Stream.empty.covary[F]
         case other => fs2.Stream.raiseError[F](other)
       }
   }
 
-  def stat[F[_]](client: SFTPClient)(path: String)(implicit F: Async[F]): F[Option[FtpFile]] =
+  def stat[F[_]](path: String)(client: SFTPClient)(implicit F: Async[F]): F[Option[FtpFile]] =
     F.delay(client.stat(path))
       .attempt
       .map(r =>
         r.map(r => SftpFileOps(path, r)).toOption
       )
 
-  def readFile[F[_]](client: SFTPClient, chunkSize: Int = 10 * 1024)(path: String)(implicit ec: ExecutionContext, cs: ContextShift[F], F: Async[F]): fs2.Stream[F, Byte] = for {
+  def readFile[F[_]](path: String, chunkSize: Int = 10 * 1024)(client: SFTPClient)(implicit ec: ExecutionContext, cs: ContextShift[F], F: Async[F]): fs2.Stream[F, Byte] = for {
     remoteFile <- Stream.eval(F.delay(client.open(path, java.util.EnumSet.of(OpenMode.READ))))
 
     is: java.io.InputStream = new remoteFile.ReadAheadRemoteFileInputStream(64) {
@@ -101,13 +99,13 @@ object SFtp {
     input <- fs2.io.readInputStream(F.pure(is), chunkSize, Blocker.liftExecutionContext(ec))
   } yield input
 
-  def rm[F[_]](client: SFTPClient)(path: String)(implicit F: Async[F]): F[Unit] = F.delay(client.rm(path))
+  def rm[F[_]](path: String)(client: SFTPClient)(implicit F: Async[F]): F[Unit] = F.delay(client.rm(path))
 
-  def rmdir[F[_]](client: SFTPClient)(path: String)(implicit F: Async[F]): F[Unit] = F.delay(client.rmdir(path))
+  def rmdir[F[_]](path: String)(client: SFTPClient)(implicit F: Async[F]): F[Unit] = F.delay(client.rmdir(path))
 
-  def mkdirs[F[_]](client: SFTPClient)(path: String)(implicit F: Async[F]): F[Unit] = F.delay(client.mkdirs(path))
+  def mkdirs[F[_]](path: String)(client: SFTPClient)(implicit F: Async[F]): F[Unit] = F.delay(client.mkdirs(path))
 
-  def upload[F[_] : ConcurrentEffect : ContextShift](client: SFTPClient)(path: String, source: fs2.Stream[F, Byte])(implicit F: Async[F], ec: ExecutionContext): F[Unit] = (for {
+  def upload[F[_] : ConcurrentEffect : ContextShift](path: String, source: fs2.Stream[F, Byte])(client: SFTPClient)(implicit F: Async[F], ec: ExecutionContext): F[Unit] = (for {
     remoteFile <- Stream.eval(F.delay(client.open(path, java.util.EnumSet.of(OpenMode.WRITE, OpenMode.CREAT))))
 
     os: java.io.OutputStream = new remoteFile.RemoteFileOutputStream() {
