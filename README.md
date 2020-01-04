@@ -38,9 +38,7 @@ connect[IO](settings).use{
 
 ```scala
 import ray.fs2.ftp.SFtp._
-import net.schmizz.sshj.{DefaultConfig, SSHClient}
 
-implicit val sshClient: SSHClient = new SSHClient(new DefaultConfig)
 val settings = SFtpSettings("127.0.0.1", 22, credentials("foo", "bar"))
 
 connect[IO](settings).use(
