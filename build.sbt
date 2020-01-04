@@ -10,43 +10,41 @@ lazy val `fs2-ftp` = project
     organization := "com.github.regis-leray",
     name := "fs2-ftp",
     description := "fs2-ftp",
-
     Test / fork := true,
     parallelExecution in Test := false,
-
     homepage := Some(url("https://github.com/regis-leray/fs2-ftp")),
     scmInfo := Some(ScmInfo(url("https://github.com/regis-leray/fs2-ftp"), "git@github.com:regis-leray/fs2-ftp.git")),
-    developers := List(Developer("username", "Regis Leray", "regis.leray at gmail dot com", url("https://github.com/regis-leray"))),
+    developers := List(
+      Developer("username", "Regis Leray", "regis.leray at gmail dot com", url("https://github.com/regis-leray"))
+    ),
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
-
     publishMavenStyle := true,
-
     crossScalaVersions := List(scala213, scala212, scala211),
     scalaVersion := scala213,
-
     scalacOptions ++= Seq(
-      "-encoding", "UTF-8",
+      "-encoding",
+      "UTF-8",
       "-unchecked",
       "-deprecation",
       "-feature",
-      "-Xlint", "-Xfatal-warnings",
+      "-Xlint",
+      "-Xfatal-warnings",
       "-language:higherKinds",
       "-language:postfixOps"
-    ) ++ PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
-      case Some((2, n)) if n < 13  => Seq("-Ypartial-unification")
-    }.toList.flatten,
-
+    ) ++ PartialFunction
+      .condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
+        case Some((2, n)) if n < 13 => Seq("-Ypartial-unification")
+      }
+      .toList
+      .flatten,
     credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential"),
-
     publishTo := {
       if (isSnapshot.value)
         Some(Opts.resolver.sonatypeSnapshots)
       else
         Some(Opts.resolver.sonatypeStaging)
     },
-
     releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-
     // don't use sbt-release's cross facility
     releaseCrossBuild := false,
     releaseProcess := Seq[ReleaseStep](
@@ -62,17 +60,21 @@ lazy val `fs2-ftp` = project
       commitNextVersion,
       releaseStepCommand("+sonatypeReleaseAll"),
       pushChanges
-    ),
+    )
   )
-  .settings(libraryDependencies ++= Seq(
-    "co.fs2" %% "fs2-core" % "2.0.1",
-    "co.fs2" %% "fs2-io" % "2.0.1",
-    "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
-    "com.hierynomus" % "sshj" % "0.27.0",
-    "commons-net" % "commons-net" % "3.6",
+  .settings(
+    libraryDependencies ++= Seq(
+      "co.fs2"                   %% "fs2-core"                % "2.0.1",
+      "co.fs2"                   %% "fs2-io"                  % "2.0.1",
+      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.1.2",
+      "com.hierynomus"           % "sshj"                     % "0.27.0",
+      "commons-net"              % "commons-net"              % "3.6",
+      "org.apache.logging.log4j" % "log4j-api"                % "2.12.0" % Test,
+      "org.apache.logging.log4j" % "log4j-core"               % "2.12.0" % Test,
+      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.12.0" % Test,
+      "org.scalatest"            %% "scalatest"               % "3.0.8" % Test
+    )
+  )
 
-    "org.apache.logging.log4j" % "log4j-api" % "2.12.0" % Test,
-    "org.apache.logging.log4j" % "log4j-core" % "2.12.0" % Test,
-    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.12.0" % Test,
-    "org.scalatest" %% "scalatest" % "3.0.8" % Test
-  ))
+addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
