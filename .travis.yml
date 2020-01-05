@@ -28,7 +28,7 @@ jobs:
     - &build-test
       stage: build & test
       jdk: openjdk11
-      scala: 2.13.0
+      scala: 2.13.1
       script:
         - set -e -o pipefail
         - docker-compose up -d
@@ -36,7 +36,7 @@ jobs:
 
     - <<: *build-test
       jdk: openjdk8
-      scala: 2.13.0
+      scala: 2.13.1
 
     - <<: *build-test
       jdk: openjdk11
