@@ -20,8 +20,23 @@ cache:
     - $HOME/.ivy2/cache
     - $HOME/.sbt
 
-script:
-  - set -e -o pipefail
-  - docker-compose up -d
-  - sbt ++$TRAVIS_SCALA_VERSION coverage +test coverageReport coverageAggregate
-  - bash <(curl -s https://codecov.io/bash)
+jobs:
+  include:
+    - stage: lint
+      script: sbt ++$TRAVIS_SCALA_VERSION! check
+
+    - stage: test
+      script:
+        - set -e -o pipefail
+        - docker-compose up -d
+        - sbt ++$TRAVIS_SCALA_VERSION! coverage +test coverageReport coverageAggregate
+
+    - stage: release
+      if: tag IS present
+      script:
+        - set -e -o pipefail
+        - git fetch --tags
+        - echo "credentials += Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$SONATYPE_USER\", \"$SONATYPE_PASSWORD\")" > ~/.sbt/1.0/sonatype.sbt
+        - echo -n "$PGP_PUBLIC" | base64 -d > /tmp/public.asc
+        - echo -n "$PGP_SECRET" | base64 -d > /tmp/secret.asc
+        - sbt ++$TRAVIS_SCALA_VERSION! clean sonatypeBundleClean +publishSigned sonatypeBundleRelease
