@@ -2,11 +2,11 @@ branches:
   only:
     - master
 
-jdk: openjdk11
+jdk: openjdk8
+
 language: scala
 
-scala:
-  - 2.13.0
+scala: 2.12.10
 
 # Cleanup the cached directories to avoid unnecessary cache updates
 before_cache:
@@ -25,11 +25,26 @@ jobs:
     - stage: lint
       script: sbt ++$TRAVIS_SCALA_VERSION! check
 
-    - stage: test
+    - &build-test
+      stage: build & test
+      jdk: openjdk11
+      scala: 2.13.0
       script:
         - set -e -o pipefail
         - docker-compose up -d
-        - sbt ++$TRAVIS_SCALA_VERSION! coverage +test coverageReport coverageAggregate
+        - sbt ++$TRAVIS_SCALA_VERSION! coverage test coverageReport coverageAggregate
+
+    - <<: *build-test
+      jdk: openjdk8
+      scala: 2.13.0
+
+    - <<: *build-test
+      jdk: openjdk11
+      scala: 2.12.10
+
+    - <<: *build-test
+      jdk: openjdk11
+      scala: 2.12.10
 
     - stage: release
       if: tag IS present
