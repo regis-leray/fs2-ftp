@@ -1,5 +1,3 @@
-import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
-
 lazy val scala211 = "2.11.12"
 lazy val scala213 = "2.13.0"
 lazy val scala212 = "2.12.10"
@@ -37,30 +35,10 @@ lazy val `fs2-ftp` = project
       }
       .toList
       .flatten,
-    credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential"),
-    publishTo := {
-      if (isSnapshot.value)
-        Some(Opts.resolver.sonatypeSnapshots)
-      else
-        Some(Opts.resolver.sonatypeStaging)
-    },
-    releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-    // don't use sbt-release's cross facility
-    releaseCrossBuild := false,
-    releaseProcess := Seq[ReleaseStep](
-      checkSnapshotDependencies,
-      inquireVersions,
-      runClean,
-      releaseStepCommandAndRemaining("+compile"),
-      setReleaseVersion,
-      commitReleaseVersion,
-      tagRelease,
-      releaseStepCommandAndRemaining("+publishSigned"),
-      setNextVersion,
-      commitNextVersion,
-      releaseStepCommand("+sonatypeReleaseAll"),
-      pushChanges
-    )
+    pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
+    pgpPublicRing := file("/tmp/public.asc"),
+    pgpSecretRing := file("/tmp/secret.asc"),
+    publishTo := sonatypePublishToBundle.value
   )
   .settings(
     libraryDependencies ++= Seq(
