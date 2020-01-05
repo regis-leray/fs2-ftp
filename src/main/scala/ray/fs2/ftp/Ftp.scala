@@ -41,7 +41,7 @@ final private class Ftp(unsafeClient: JFTPClient) extends FtpClient[JFTPClient] 
 
   def mkdir(path: String)(implicit ec: ExecutionContext): IO[Unit] =
     execute(_.makeDirectory(path))
-    .ensure(InvalidPathError(s"Path is invalid. Cannot create directory : $path"))(identity)
+      .ensure(InvalidPathError(s"Path is invalid. Cannot create directory : $path"))(identity)
       .map(_ => ())
 
   def ls(path: String)(implicit ec: ExecutionContext): Stream[IO, FtpResource] =
@@ -68,8 +68,10 @@ final private class Ftp(unsafeClient: JFTPClient) extends FtpClient[JFTPClient] 
     implicit val F = ConcurrentEffect[IO]
     source
       .through(fs2.io.toInputStream[IO])
-      .evalMap(is =>
-        execute(_.storeFile(path, is)).ensure(InvalidPathError(s"Path is invalid. Cannot upload data to : $path"))(identity)
+      .evalMap(
+        is =>
+          execute(_.storeFile(path, is))
+            .ensure(InvalidPathError(s"Path is invalid. Cannot upload data to : $path"))(identity)
       )
       .compile
       .drain

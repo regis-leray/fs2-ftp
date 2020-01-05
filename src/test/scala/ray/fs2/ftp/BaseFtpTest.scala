@@ -51,7 +51,6 @@ trait BaseFtpTest extends WordSpec with Matchers {
       .map(_.path) should contain allElementsOf Nil
   }
 
-
   "lsDescendant" in {
     connect(settings)
       .use {
