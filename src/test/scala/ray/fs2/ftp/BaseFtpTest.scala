@@ -7,8 +7,6 @@ import java.util.concurrent.Executors
 import cats.effect.{ Blocker, ContextShift, IO, Resource }
 import org.scalatest.{ Matchers, WordSpec }
 import ray.fs2.ftp.Ftp._
-import ray.fs2.ftp.settings.FtpCredentials
-import ray.fs2.ftp.settings.FtpSettings
 
 import scala.concurrent.ExecutionContext
 import scala.io.Source

@@ -1,4 +1,4 @@
-import ReleaseTransformations._
+import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
 
 lazy val scala211 = "2.11.12"
 lazy val scala213 = "2.13.0"

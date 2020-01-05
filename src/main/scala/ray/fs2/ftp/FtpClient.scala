@@ -1,0 +1,31 @@
+package ray.fs2.ftp
+
+import cats.effect.{ ContextShift, IO, Resource }
+import fs2.Stream
+import ray.fs2.ftp.FtpSettings.{ SecureFtpSettings, UnsecureFtpSettings }
+
+import scala.concurrent.ExecutionContext
+
+trait FtpClient[+A] {
+  def stat(path: String)(implicit ec: ExecutionContext): IO[Option[FtpResource]]
+
+  def readFile(path: String, chunkSize: Int = 2048)(
+    implicit ec: ExecutionContext,
+    cs: ContextShift[IO]
+  ): fs2.Stream[IO, Byte]
+  def rm(path: String)(implicit ec: ExecutionContext): IO[Unit]
+  def rmdir(path: String)(implicit ec: ExecutionContext): IO[Unit]
+  def mkdir(path: String)(implicit ec: ExecutionContext): IO[Unit]
+  def ls(path: String)(implicit ec: ExecutionContext): Stream[IO, FtpResource]
+  def lsDescendant(path: String)(implicit ec: ExecutionContext): Stream[IO, FtpResource]
+  def upload(path: String, source: fs2.Stream[IO, Byte])(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[Unit]
+  def execute[T](f: A => T)(implicit ec: ExecutionContext): IO[T]
+}
+
+object FtpClient {
+
+  def connect[A](settings: FtpSettings[A])(implicit ec: ExecutionContext): Resource[IO, FtpClient[A]] = settings match {
+    case s: UnsecureFtpSettings => Ftp.connect(s)
+    case s: SecureFtpSettings   => SFtp.connect(s)
+  }
+}

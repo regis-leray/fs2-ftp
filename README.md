@@ -22,15 +22,16 @@ How to use it ?
 * FTP / FTPS
 
 ```scala
-import ray.fs2.ftp.Ftp._
+import ray.fs2.ftp.FtpClient._
+import ray.fs2.ftp.FtpSettings._
 
 // FTP
-val settings = FtpSettings("127.0.0.1", 21, credentials("foo", "bar"))
+val settings = UnsecureFtpSettings("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 // FTPS
-val settings = FtpsSettings("127.0.0.1", 21, credentials("foo", "bar"))
+val settings = UnsecureFtpSettings.secure("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 
-connect[IO](settings).use{
-  listFiles[IO]("/")(_).compile.toList
+connect(settings).use{
+  _.ls("/").compile.toList
 }
 ```
 
@@ -38,11 +39,28 @@ connect[IO](settings).use{
 
 ```scala
 import ray.fs2.ftp.SFtp._
+import ray.fs2.ftp.FtpSettings._
 
-val settings = SFtpSettings("127.0.0.1", 22, credentials("foo", "bar"))
+val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
 
-connect[IO](settings).use(
-  listFiles[IO]("/")(_).compile.toList
+connect(settings).use(
+  _.ls("/").compile.toList
+)     
+ ```
+
+Support any commands ?
+---
+
+The underlying client is expose and run any available command in a blocking and safe manner
+
+```scala
+import ray.fs2.ftp.SFtp._
+import ray.fs2.ftp.FtpSettings._
+
+val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+
+connect(settings).use(
+  _.execute(_.version())
 )     
  ```
 

@@ -2,12 +2,16 @@ package ray.fs2.ftp
 
 import java.net.Proxy
 
+import net.schmizz.sshj.sftp.{ SFTPClient => JSFTPClient }
 import net.schmizz.sshj.{ Config => SshConfig, DefaultConfig => DefaultSshConfig }
+import org.apache.commons.net.ftp.{ FTPClient => JFTPClient }
 
-object settings {
-  case class FtpCredentials(username: String, password: String)
+sealed trait FtpSettings[A]
 
-  final case class SFtpSettings(
+object FtpSettings {
+  final case class FtpCredentials(username: String, password: String)
+
+  final case class SecureFtpSettings(
     host: String,
     port: Int,
     credentials: FtpCredentials,
@@ -15,21 +19,7 @@ object settings {
     knownHosts: Option[String],
     sftpIdentity: Option[SftpIdentity],
     sshConfig: SshConfig
-  )
-
-  object SFtpSettings {
-
-    def apply(host: String, port: Int, creds: FtpCredentials): SFtpSettings =
-      new SFtpSettings(
-        host,
-        port,
-        creds,
-        strictHostKeyChecking = false,
-        knownHosts = None,
-        sftpIdentity = None,
-        new DefaultSshConfig()
-      )
-  }
+  ) extends FtpSettings[JSFTPClient]
 
   sealed trait SftpIdentity {
     type KeyType
@@ -72,7 +62,21 @@ object settings {
       KeyFileSftpIdentity(privateKey, Some(privateKeyFilePassphrase))
   }
 
-  final case class FtpSettings(
+  object SecureFtpSettings {
+
+    def apply(host: String, port: Int, creds: FtpCredentials): SecureFtpSettings =
+      new SecureFtpSettings(
+        host,
+        port,
+        creds,
+        strictHostKeyChecking = false,
+        knownHosts = None,
+        sftpIdentity = None,
+        new DefaultSshConfig()
+      )
+  }
+
+  final case class UnsecureFtpSettings(
     host: String,
     port: Int,
     credentials: FtpCredentials,
@@ -80,17 +84,14 @@ object settings {
     passiveMode: Boolean,
     proxy: Option[Proxy],
     secure: Boolean
-  )
+  ) extends FtpSettings[JFTPClient]
 
-  object FtpSettings {
+  object UnsecureFtpSettings {
 
-    def apply(host: String, port: Int, creds: FtpCredentials): FtpSettings =
-      new FtpSettings(host, port, creds, true, true, None, false)
-  }
+    def apply(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
+      new UnsecureFtpSettings(host, port, creds, true, true, None, false)
 
-  object FtpsSettings {
-
-    def apply(host: String, port: Int, creds: FtpCredentials): FtpSettings =
-      new FtpSettings(host, port, creds, true, true, None, true)
+    def secure(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
+      new UnsecureFtpSettings(host, port, creds, true, true, None, true)
   }
 }

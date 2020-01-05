@@ -7,8 +7,6 @@ import net.schmizz.sshj.sftp.Response.StatusCode
 import net.schmizz.sshj.sftp.SFTPException
 import org.scalatest.{ Matchers, WordSpec }
 import ray.fs2.ftp.SFtp._
-import ray.fs2.ftp.settings.FtpCredentials
-import ray.fs2.ftp.settings.SFtpSettings
 
 import scala.concurrent.ExecutionContext
 import scala.io.Source
