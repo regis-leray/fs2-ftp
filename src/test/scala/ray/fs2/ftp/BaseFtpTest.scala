@@ -7,6 +7,7 @@ import java.util.concurrent.Executors
 import cats.effect.{ Blocker, ContextShift, IO, Resource }
 import org.scalatest.{ Matchers, WordSpec }
 import ray.fs2.ftp.Ftp._
+import ray.fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
 
 import scala.concurrent.ExecutionContext
 import scala.io.Source
@@ -15,12 +16,12 @@ trait BaseFtpTest extends WordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  val settings: FtpSettings
+  val settings: UnsecureFtpSettings
 
   val home = Paths.get("ftp-home/ftp/home")
 
   "invalid credentials" in {
-    connect[IO](settings.copy(credentials = FtpCredentials("test", "test")))
+    connect(settings.copy(credentials = FtpCredentials("test", "test")))
       .use(_ => IO.unit)
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -29,39 +30,39 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "valid credentials" in {
-    connect[IO](settings).use(c => IO.pure(c.isConnected)).unsafeRunSync() shouldBe true
+    connect(settings).use(_.execute(_.isConnected)).unsafeRunSync() shouldBe true
   }
 
   "listFiles" in {
-    connect[IO](settings)
+    connect(settings)
       .use {
-        lsDescendant[IO]("/")(_).compile.toList
+        _.lsDescendant("/").compile.toList
       }
       .unsafeRunSync()
-      .map(_.path) should contain allElementsOf List("notes.txt", "console.dump", "users.csv")
+      .map(_.path) should contain allElementsOf List("notes.txt", "/dir1/console.dump", "/dir1/users.csv")
   }
 
   "listFiles with wrong directory" in {
-    connect[IO](settings)
+    connect(settings)
       .use {
-        lsDescendant[IO]("/wrong-directory")(_).compile.toList
+        _.lsDescendant("/wrong-directory").compile.toList
       }
       .unsafeRunSync() shouldBe Nil
   }
 
   "stat file" in {
-    connect[IO](settings)
+    connect(settings)
       .use {
-        stat[IO]("/dir1/users.csv")
+        _.stat("/dir1/users.csv")
       }
       .unsafeRunSync()
-      .map(_.path) shouldBe Some("users.csv")
+      .map(_.path) shouldBe Some("/dir1/users.csv")
   }
 
   "stat file does not exist" in {
-    connect[IO](settings)
+    connect(settings)
       .use(
-        stat[IO]("/wrong-path.xml")
+        _.stat("/wrong-path.xml")
       )
       .unsafeRunSync()
       .map(_.path) shouldBe None
@@ -70,9 +71,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
   "readFile" in {
     val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-    connect[IO](settings)
+    connect(settings)
       .use(
-        readFile[IO]("/notes.txt")(_).through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec))).compile.drain
+        _.readFile("/notes.txt").through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec))).compile.drain
       )
       .unsafeRunSync()
 
@@ -87,9 +88,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
   "readFile does not exist" in {
     val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-    connect[IO](settings)
+    connect(settings)
       .use {
-        readFile[IO]("/no-file.xml")(_)
+        _.readFile("/no-file.xml")
           .through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
           .compile
           .drain
@@ -100,9 +101,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
     }
   }
   "mkdir directory" in {
-    connect[IO](settings)
+    connect(settings)
       .use(
-        mkdir[IO]("/new-dir")
+        _.mkdir("/new-dir")
       )
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -113,9 +114,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "mkdir fail when invalid path" in {
-    connect[IO](settings)
+    connect(settings)
       .use(
-        mkdir[IO]("/dir1/users.csv")
+        _.mkdir("/dir1/users.csv")
       )
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -127,9 +128,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
     val path = home.resolve("to-delete.txt")
     Files.createFile(path)
 
-    connect[IO](settings)
+    connect(settings)
       .use(
-        rm[IO]("/to-delete.txt")
+        _.rm("/to-delete.txt")
       )
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -140,9 +141,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "rm fail when invalid path" in {
-    connect[IO](settings)
+    connect(settings)
       .use(
-        rm[IO]("/dont-exist")
+        _.rm("/dont-exist")
       )
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -154,9 +155,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
     val path = home.resolve("dir-to-delete")
     Files.createDirectory(path)
 
-    connect[IO](settings)
+    connect(settings)
       .use(
-        rmdir[IO]("/dir-to-delete")
+        _.rmdir("/dir-to-delete")
       )
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -167,9 +168,9 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "rm fail invalid directory" in {
-    connect[IO](settings)
+    connect(settings)
       .use(
-        rmdir[IO]("/dont-exist")
+        _.rmdir("/dont-exist")
       )
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -178,12 +179,12 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "upload a file" in {
-    val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
+    val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
     val path                       = home.resolve("hello-world.txt")
 
-    connect[IO](settings)
+    connect(settings)
       .use(
-        upload[IO]("/hello-world.txt", data)
+        _.upload("/hello-world.txt", data)
       )
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -199,11 +200,11 @@ trait BaseFtpTest extends WordSpec with Matchers {
   }
 
   "upload fail when path is invalid" in {
-    val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
+    val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
 
-    connect[IO](settings)
+    connect(settings)
       .use(
-        upload[IO]("/dont-exist/hello-world.txt", data)
+        _.upload("/dont-exist/hello-world.txt", data)
       )
       .attempt
       .unsafeRunSync() should matchPattern {

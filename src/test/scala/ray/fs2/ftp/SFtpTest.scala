@@ -6,6 +6,7 @@ import cats.effect.{ Blocker, ContextShift, IO, Resource }
 import net.schmizz.sshj.sftp.Response.StatusCode
 import net.schmizz.sshj.sftp.SFTPException
 import org.scalatest.{ Matchers, WordSpec }
+import ray.fs2.ftp.FtpSettings.{ FtpCredentials, SecureFtpSettings }
 import ray.fs2.ftp.SFtp._
 
 import scala.concurrent.ExecutionContext
@@ -15,13 +16,13 @@ class SFtpTest extends WordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.global
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 
-  private val settings = SFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
+  private val settings = SecureFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
 
   val home = Paths.get("ftp-home/sftp/home/foo")
 
   "SFtp" should {
     "connect with invalid credentials" in {
-      connect[IO](settings.copy(credentials = FtpCredentials("invalid", "invalid")))
+      connect(settings.copy(credentials = FtpCredentials("invalid", "invalid")))
         .use(_ => IO.unit)
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -30,41 +31,41 @@ class SFtpTest extends WordSpec with Matchers {
     }
 
     "connect with valid credentials" in {
-      connect[IO](settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
+      connect(settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
     }
 
     "listFiles" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          lsDescendant[IO]("/")(_).compile.toList
+          _.lsDescendant("/").compile.toList
         )
         .unsafeRunSync()
-        .map(_.path) should contain allElementsOf List("notes.txt", "console.dump", "users.csv")
+        .map(_.path) should contain allElementsOf List("/notes.txt", "/dir1/console.dump", "/dir1/users.csv")
     }
 
     "listFiles with wrong directory" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          lsDescendant[IO]("wrong-directory")(_).compile.toList
+          _.lsDescendant("wrong-directory").compile.toList
         )
         .unsafeRunSync() shouldBe Nil
     }
 
     "stat file" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          stat[IO]("/dir1/users.csv")
+          _.stat("/dir1/users.csv")
         )
         .unsafeRunSync()
-        .map(_.path) shouldBe Some("users.csv")
+        .map(_.path) shouldBe Some("/dir1/users.csv")
     }
 
     "stat file does not exist" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          stat[IO]("/wrong-path.xml")
+          _.stat("/wrong-path.xml")
         )
         .unsafeRunSync()
         .map(_.path) shouldBe None
@@ -73,9 +74,9 @@ class SFtpTest extends WordSpec with Matchers {
     "readFile" in {
       val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-      connect[IO](settings)
+      connect(settings)
         .use(
-          readFile[IO]("/notes.txt")(_)
+          _.readFile("/notes.txt")
             .through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
             .compile
             .drain
@@ -93,9 +94,9 @@ class SFtpTest extends WordSpec with Matchers {
     "readFile does not exist" in {
       val tmp = Files.createTempFile("notes.txt", ".tmp")
 
-      connect[IO](settings)
+      connect(settings)
         .use {
-          readFile[IO]("/no-file.xml")(_)
+          _.readFile("/no-file.xml")
             .through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
             .compile
             .drain
@@ -107,9 +108,9 @@ class SFtpTest extends WordSpec with Matchers {
     }
 
     "mkdirs directory" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          mkdirs[IO]("/dir1/new-dir")
+          _.mkdir("/dir1/new-dir")
         )
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -120,9 +121,9 @@ class SFtpTest extends WordSpec with Matchers {
     }
 
     "mkdirs fail when invalid path" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          mkdirs[IO]("/dir1/users.csv")
+          _.mkdir("/dir1/users.csv")
         )
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -134,9 +135,9 @@ class SFtpTest extends WordSpec with Matchers {
       val path = home.resolve("dir1/to-delete.txt")
       Files.createFile(path)
 
-      connect[IO](settings)
+      connect(settings)
         .use(
-          rm[IO]("/dir1/to-delete.txt")
+          _.rm("/dir1/to-delete.txt")
         )
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -147,9 +148,9 @@ class SFtpTest extends WordSpec with Matchers {
     }
 
     "rm fail when invalid path" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          rm[IO]("upload/dont-exist")
+          _.rm("upload/dont-exist")
         )
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -162,9 +163,9 @@ class SFtpTest extends WordSpec with Matchers {
 
       Files.createDirectory(path)
 
-      connect[IO](settings)
+      connect(settings)
         .use(
-          rmdir[IO]("/dir1/dir-to-delete")
+          _.rmdir("/dir1/dir-to-delete")
         )
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -175,9 +176,9 @@ class SFtpTest extends WordSpec with Matchers {
     }
 
     "rmdir fail invalid directory" in {
-      connect[IO](settings)
+      connect(settings)
         .use(
-          rmdir[IO]("/dont-exist")
+          _.rmdir("/dont-exist")
         )
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -186,12 +187,12 @@ class SFtpTest extends WordSpec with Matchers {
     }
 
     "upload a file" in {
-      val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
+      val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
       val path                       = home.resolve("dir1/hello-world.txt")
 
-      connect[IO](settings)
+      connect(settings)
         .use(
-          upload("/dir1/hello-world.txt", data)
+          _.upload("/dir1/hello-world.txt", data)
         )
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -207,11 +208,11 @@ class SFtpTest extends WordSpec with Matchers {
     }
 
     "upload fail when path is invalid" in {
-      val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary[IO]
+      val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
 
-      connect[IO](settings)
+      connect(settings)
         .use(
-          upload("/dont-exist/hello-world.txt", data)
+          _.upload("/dont-exist/hello-world.txt", data)
         )
         .attempt
         .unsafeRunSync() should matchPattern {
