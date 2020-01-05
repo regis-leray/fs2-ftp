@@ -36,7 +36,7 @@ class SFtpTest extends WordSpec with Matchers {
       }
     }
 
-    "listFiles" in {
+    "lsDescendant" in {
       connect(settings)
         .use(
           _.lsDescendant("/").compile.toList
@@ -45,10 +45,27 @@ class SFtpTest extends WordSpec with Matchers {
         .map(_.path) should contain allElementsOf List("/notes.txt", "/dir1/console.dump", "/dir1/users.csv")
     }
 
-    "listFiles with wrong directory" in {
+    "lsDescendant with wrong directory" in {
       connect(settings)
         .use(
           _.lsDescendant("wrong-directory").compile.toList
+        )
+        .unsafeRunSync() shouldBe Nil
+    }
+
+    "ls" in {
+      connect(settings)
+        .use(
+          _.ls("/").compile.toList
+        )
+        .unsafeRunSync()
+        .map(_.path) should contain allElementsOf List("/notes.txt", "/dir1")
+    }
+
+    "ls with wrong directory" in {
+      connect(settings)
+        .use(
+          _.ls("wrong-directory").compile.toList
         )
         .unsafeRunSync() shouldBe Nil
     }

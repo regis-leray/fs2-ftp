@@ -21,7 +21,10 @@ object FtpResource {
 
   def apply(f: FTPFile, path: Option[String] = None): FtpResource =
     FtpResource(
-      path.fold(f.getName)(p => s"$p/${f.getName}"),
+      path.fold(f.getName){
+        case "/" => s"/${f.getName}"
+        case p => s"$p/${f.getName}"
+      },
       f.getSize,
       f.getTimestamp.getTimeInMillis,
       getPosixFilePermissions(f),

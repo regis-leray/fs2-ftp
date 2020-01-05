@@ -31,14 +31,17 @@ final private class Ftp(unsafeClient: JFTPClient) extends FtpClient[JFTPClient] 
 
   def rm(path: String)(implicit ec: ExecutionContext): IO[Unit] =
     execute(_.deleteFile(path))
+      .ensure(InvalidPathError(s"Path is invalid. Cannot delete file : $path"))(identity)
       .map(_ => ())
 
   def rmdir(path: String)(implicit ec: ExecutionContext): IO[Unit] =
     execute(_.removeDirectory(path))
+      .ensure(InvalidPathError(s"Path is invalid. Cannot remove directory : $path"))(identity)
       .map(_ => ())
 
   def mkdir(path: String)(implicit ec: ExecutionContext): IO[Unit] =
     execute(_.makeDirectory(path))
+    .ensure(InvalidPathError(s"Path is invalid. Cannot create directory : $path"))(identity)
       .map(_ => ())
 
   def ls(path: String)(implicit ec: ExecutionContext): Stream[IO, FtpResource] =
@@ -65,7 +68,9 @@ final private class Ftp(unsafeClient: JFTPClient) extends FtpClient[JFTPClient] 
     implicit val F = ConcurrentEffect[IO]
     source
       .through(fs2.io.toInputStream[IO])
-      .evalMap(is => execute(_.storeFile(path, is)))
+      .evalMap(is =>
+        execute(_.storeFile(path, is)).ensure(InvalidPathError(s"Path is invalid. Cannot upload data to : $path"))(identity)
+      )
       .compile
       .drain
   }
@@ -97,7 +102,7 @@ object Ftp {
 
           success -> new Ftp(ftpClient)
         }
-        .ensure(new IllegalArgumentException(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
+        .ensure(ConnectionError(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
         .map(_._2)
     } { client =>
       for {
