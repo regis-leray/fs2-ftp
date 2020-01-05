@@ -38,7 +38,7 @@ connect(settings).use{
 * SFTP
 
 ```scala
-import ray.fs2.ftp.SFtp._
+import ray.fs2.ftp.FtpClient._
 import ray.fs2.ftp.FtpSettings._
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
@@ -54,7 +54,7 @@ Support any commands ?
 The underlying client is expose and run any available command in a blocking and safe manner
 
 ```scala
-import ray.fs2.ftp.SFtp._
+import ray.fs2.ftp.FtpClient._
 import ray.fs2.ftp.FtpSettings._
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
