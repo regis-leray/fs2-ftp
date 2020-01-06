@@ -64,6 +64,46 @@ connect(settings).use(
 )     
  ```
 
+
+How to release
+---
+
+1. How to create a key to signed artifact
+```
+# generate key
+$ gpg --gen-key
+
+# list the keys
+$ gpg --list-keys
+
+/home/foo/.gnupg/pubring.gpg
+------------------------------
+
+pub   rsa4096 2018-08-22 [SC]
+      1234517530FB96F147C6A146A326F592D39AAAAA
+uid           [ultimate] your name <you@example.com>
+sub   rsa4096 2018-08-22 [E]
+
+#send key to server
+$> gpg --keyserver hkp://ipv4.pool.sks-keyservers.net --send-keys $LONG_ID
+
+# copy public key to clipboard
+$> gpg --armor --export $LONG_ID | pbcopy
+$> submit key by copy/paste key to http://keyserver.ubuntu.com:11371/
+
+## declare in travis (settings) PGP_SECRET
+gpg --armor --export-secret-keys $LONG_ID | base64 -w0 | pbcopy
+
+## declare in travis (settings) PGP_PASSPHRASE
+The randomly generated password you used to create a fresh gpg key
+
+
+```
+
+2. create a tag and push
+
+more information here => https://github.com/olafurpg/sbt-ci-release
+
 ## LICENSE
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this project except in compliance with
