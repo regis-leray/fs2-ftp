@@ -35,7 +35,6 @@ lazy val `fs2-ftp` = project
       }
       .toList
       .flatten,
-
     PgpKeys.pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toCharArray()),
     publishTo := sonatypePublishToBundle.value
   )
