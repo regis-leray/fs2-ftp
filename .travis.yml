@@ -44,8 +44,13 @@ jobs:
       scala: 2.12.10
 
     - <<: *build-test
-      jdk: openjdk11
+      jdk: openjdk8
       scala: 2.12.10
+      script:
+        - set -e
+        - docker-compose up -d
+        - sbt ++$TRAVIS_SCALA_VERSION! coverage test coverageReport coverageAggregate
+        - bash <(curl -s https://codecov.io/bash)
 
     - stage: release
       if: tag IS present
