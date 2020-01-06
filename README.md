@@ -87,14 +87,10 @@ sub   rsa4096 2018-08-22 [E]
 #send key to server
 $> gpg --keyserver hkp://ipv4.pool.sks-keyservers.net --send-keys $LONG_ID
 
-# copy public key to clipboard
-$> gpg --armor --export $LONG_ID | pbcopy
-$> submit key by copy/paste key to http://keyserver.ubuntu.com:11371/
-
-## declare in travis (settings) PGP_SECRET in base64 (with no return carriage), dont put "" around the value !
+# declare in travis (settings) PGP_SECRET in base64 (with no return carriage), dont put "" around the value !
 gpg --armor --export-secret-keys $LONG_ID | base64 -w0 | pbcopy
 
-## declare in travis (settings) PGP_PASSPHRASE in plain text
+# declare in travis (settings) PGP_PASSPHRASE in plain text
 The randomly generated password you used to create a fresh gpg key
 ```
 
