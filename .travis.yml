@@ -23,29 +23,29 @@ cache:
 
 jobs:
   include:
-#    - stage: lint
-#      script: sbt ++$TRAVIS_SCALA_VERSION! check
-#
-#    - &build-test
-#      stage: build & test
-#      jdk: openjdk11
-#      scala: 2.13.1
-#      script:
-#        - set -e
-#        - docker-compose up -d
-#        - sbt ++$TRAVIS_SCALA_VERSION! coverage test coverageReport coverageAggregate
-#
-#    - <<: *build-test
-#      jdk: openjdk8
-#      scala: 2.13.1
-#
-#    - <<: *build-test
-#      jdk: openjdk11
-#      scala: 2.12.10
-#
-#    - <<: *build-test
-#      jdk: openjdk11
-#      scala: 2.12.10
+    - stage: lint
+      script: sbt ++$TRAVIS_SCALA_VERSION! check
+
+    - &build-test
+      stage: build & test
+      jdk: openjdk11
+      scala: 2.13.1
+      script:
+        - set -e
+        - docker-compose up -d
+        - sbt ++$TRAVIS_SCALA_VERSION! coverage test coverageReport coverageAggregate
+
+    - <<: *build-test
+      jdk: openjdk8
+      scala: 2.13.1
+
+    - <<: *build-test
+      jdk: openjdk11
+      scala: 2.12.10
+
+    - <<: *build-test
+      jdk: openjdk11
+      scala: 2.12.10
 
     - stage: release
       if: tag IS present
