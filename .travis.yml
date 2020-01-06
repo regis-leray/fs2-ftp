@@ -33,7 +33,7 @@ jobs:
       jdk: openjdk11
       scala: 2.13.1
       script:
-        - set -e -o pipefail
+        - set -e
         - docker-compose up -d
         - sbt ++$TRAVIS_SCALA_VERSION! coverage test coverageReport coverageAggregate
 
@@ -52,9 +52,9 @@ jobs:
     - stage: release
       if: tag IS present
       script:
-        - set -e -o pipefail
+        - set -e
         - git fetch --tags
-        - echo "credentials += Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$SONATYPE_USER\", \"$SONATYPE_PASSWORD\")" > ~/.sbt/1.0/sonatype.sbt
         - echo -n "$PGP_PUBLIC" | base64 -d > /tmp/public.asc
         - echo -n "$PGP_SECRET" | base64 -d > /tmp/secret.asc
+        - echo "credentials += Credentials(\"Sonatype Nexus Repository Manager\", \"oss.sonatype.org\", \"$SONATYPE_USER\", \"$SONATYPE_PASSWORD\")" > ~/.sbt/1.0/sonatype.sbt
         - sbt ++$TRAVIS_SCALA_VERSION! clean sonatypeBundleClean +publishSigned sonatypeBundleRelease
