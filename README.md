@@ -11,9 +11,9 @@ Setup
 -----
 
 ```
-//support scala 2.11 /  2.12 / 2.13
+//support scala 2.12 / 2.13
 
-libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.5.0"
+libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.5.1"
 ```
 
 How to use it ?

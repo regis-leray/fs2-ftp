@@ -1,4 +1,3 @@
-lazy val scala211 = "2.11.12"
 lazy val scala213 = "2.13.1"
 lazy val scala212 = "2.12.10"
 
@@ -17,7 +16,7 @@ lazy val `fs2-ftp` = project
     ),
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
     publishMavenStyle := true,
-    crossScalaVersions := List(scala213, scala212, scala211),
+    crossScalaVersions := List(scala213, scala212),
     scalaVersion := scala213,
     scalacOptions ++= Seq(
       "-encoding",
