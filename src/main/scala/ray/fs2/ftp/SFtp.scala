@@ -114,9 +114,8 @@ object SFtp {
       sftpIdentity.foreach(setIdentity(_, credentials.username)(ssh))
 
       new SFtp(ssh.newSFTPClient())
-    })(
-      client =>
-        client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) IO.delay(ssh.disconnect()) else IO.unit)
+    })(client =>
+      client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) IO.delay(ssh.disconnect()) else IO.unit)
     )
   }
 

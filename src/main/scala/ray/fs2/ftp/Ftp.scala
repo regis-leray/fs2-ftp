@@ -68,10 +68,9 @@ final private class Ftp(unsafeClient: JFTPClient) extends FtpClient[JFTPClient] 
     implicit val F = ConcurrentEffect[IO]
     source
       .through(fs2.io.toInputStream[IO])
-      .evalMap(
-        is =>
-          execute(_.storeFile(path, is))
-            .ensure(InvalidPathError(s"Path is invalid. Cannot upload data to : $path"))(identity)
+      .evalMap(is =>
+        execute(_.storeFile(path, is))
+          .ensure(InvalidPathError(s"Path is invalid. Cannot upload data to : $path"))(identity)
       )
       .compile
       .drain
