@@ -27,7 +27,7 @@ import ray.fs2.ftp.FtpSettings._
 
 // FTP
 val settings = UnsecureFtpSettings("127.0.0.1", 21, FtpCredentials("foo", "bar"))
-// FTPS
+// FTP-SSL 
 val settings = UnsecureFtpSettings.secure("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 
 connect(settings).use{
@@ -48,10 +48,49 @@ connect(settings).use(
 )     
  ```
 
+Required BlockingIO
+---
+
+```scala
+trait FtpClient[+A] {
+  def stat(path: String)(implicit ec: ExecutionContext): IO[Option[FtpResource]]
+
+  def readFile(path: String, chunkSize: Int = 2048)(
+    implicit ec: ExecutionContext,
+    cs: ContextShift[IO]
+  ): fs2.Stream[IO, Byte]
+  def rm(path: String)(implicit ec: ExecutionContext): IO[Unit]
+  def rmdir(path: String)(implicit ec: ExecutionContext): IO[Unit]
+  def mkdir(path: String)(implicit ec: ExecutionContext): IO[Unit]
+  def ls(path: String)(implicit ec: ExecutionContext): Stream[IO, FtpResource]
+  def lsDescendant(path: String)(implicit ec: ExecutionContext): Stream[IO, FtpResource]
+  def upload(path: String, source: fs2.Stream[IO, Byte])(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[Unit]
+  def execute[T](f: A => T)(implicit ec: ExecutionContext): IO[T]
+}
+```
+
+All function required an implicit Execution Context.
+
+Since all (s)ftp command are IO bound task , it is required to provide an unbounded size Thread Pool (ExecutionContext)
+
+More explanation: https://typelevel.org/cats-effect/concurrency/basics.html#choosing-thread-pool
+
+
+Here how to create an unbounded Execution Context
+```scala
+import scala.concurrent.ExecutionContext
+import java.util.concurrent.Executors
+
+implicit val blockingIO = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+```
+
+
+
+
 Support any commands ?
 ---
 
-The underlying client is expose and run any available command in a blocking and safe manner
+The underlying client is safely exposed and you have access to all possible ftp commands
 
 ```scala
 import ray.fs2.ftp.FtpClient._
@@ -63,6 +102,9 @@ connect(settings).use(
   _.execute(_.version())
 )     
  ```
+ 
+
+
 
 
 How to release
