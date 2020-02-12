@@ -1,11 +1,11 @@
 package ray.fs2.ftp
 
-import java.io.{FileNotFoundException, InputStream}
+import java.io.{ FileNotFoundException, InputStream }
 
-import cats.effect.{Blocker, ContextShift, IO, Resource}
+import cats.effect.{ Blocker, ContextShift, IO, Resource }
 import cats.syntax.monadError._
 import fs2.Stream
-import org.apache.commons.net.ftp.{FTP, FTPSClient, FTPClient => JFTPClient}
+import org.apache.commons.net.ftp.{ FTP, FTPSClient, FTPClient => JFTPClient }
 import ray.fs2.ftp.FtpSettings.UnsecureFtpSettings
 
 final private class Ftp(unsafeClient: JFTPClient, blocker: Blocker) extends FtpClient[JFTPClient] {
@@ -67,42 +67,42 @@ final private class Ftp(unsafeClient: JFTPClient, blocker: Blocker) extends FtpC
 
 object Ftp {
 
-  def connect(settings: UnsecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JFTPClient]] = for {
-    blocker <- Blocker[IO]
+  def connect(settings: UnsecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JFTPClient]] =
+    for {
+      blocker <- Blocker[IO]
 
-    r <- Resource.make[IO, FtpClient[JFTPClient]] {
-      IO.delay {
-        val ftpClient = if (settings.secure) new FTPSClient() else new JFTPClient()
-        settings.proxy.foreach(ftpClient.setProxy)
-        ftpClient.connect(settings.host, settings.port)
+      r <- Resource.make[IO, FtpClient[JFTPClient]] {
+            IO.delay {
+                val ftpClient = if (settings.secure) new FTPSClient() else new JFTPClient()
+                settings.proxy.foreach(ftpClient.setProxy)
+                ftpClient.connect(settings.host, settings.port)
 
-        val success = ftpClient.login(settings.credentials.username, settings.credentials.password)
+                val success = ftpClient.login(settings.credentials.username, settings.credentials.password)
 
-        if (settings.binary) {
-          ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
-        }
+                if (settings.binary) {
+                  ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
+                }
 
-        if (settings.passiveMode) {
-          ftpClient.enterLocalPassiveMode()
-        }
+                if (settings.passiveMode) {
+                  ftpClient.enterLocalPassiveMode()
+                }
 
-        success -> new Ftp(ftpClient, blocker)
-      }
-        .ensure(ConnectionError(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
-        .map(_._2)
-    } { client =>
-      for {
-        connected <- client.execute(_.isConnected)
-        _ <- if (!connected) IO.pure(())
-        else
-          client
-            .execute(_.logout)
-            .attempt
-            .flatMap(_ => client.execute(_.disconnect))
-      } yield ()
-    }
+                success -> new Ftp(ftpClient, blocker)
+              }
+              .ensure(ConnectionError(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
+              .map(_._2)
+          } { client =>
+            for {
+              connected <- client.execute(_.isConnected)
+              _ <- if (!connected) IO.pure(())
+                  else
+                    client
+                      .execute(_.logout)
+                      .attempt
+                      .flatMap(_ => client.execute(_.disconnect))
+            } yield ()
+          }
 
-  } yield r
-
+    } yield r
 
 }

@@ -1,8 +1,8 @@
 package ray.fs2.ftp
 
-import cats.effect.{ContextShift, IO, Resource}
+import cats.effect.{ ContextShift, IO, Resource }
 import fs2.Stream
-import ray.fs2.ftp.FtpSettings.{SecureFtpSettings, UnsecureFtpSettings}
+import ray.fs2.ftp.FtpSettings.{ SecureFtpSettings, UnsecureFtpSettings }
 
 trait FtpClient[+A] {
   def stat(path: String)(implicit cs: ContextShift[IO]): IO[Option[FtpResource]]

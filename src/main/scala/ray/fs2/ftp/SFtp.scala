@@ -2,16 +2,16 @@ package ray.fs2.ftp
 
 import java.io._
 
-import cats.effect.{Blocker, ContextShift, IO, Resource}
+import cats.effect.{ Blocker, ContextShift, IO, Resource }
 import cats.syntax.applicativeError._
 import fs2.Stream
 import fs2.Stream._
 import net.schmizz.sshj.SSHClient
-import net.schmizz.sshj.sftp.{OpenMode, Response, SFTPException, SFTPClient => JSFTPClient}
+import net.schmizz.sshj.sftp.{ OpenMode, Response, SFTPException, SFTPClient => JSFTPClient }
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import net.schmizz.sshj.userauth.keyprovider.OpenSSHKeyFile
 import net.schmizz.sshj.userauth.password.PasswordUtils
-import ray.fs2.ftp.FtpSettings.{KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity}
+import ray.fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity }
 
 import scala.jdk.CollectionConverters._
 
@@ -95,27 +95,27 @@ object SFtp {
   def connect(settings: SecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JSFTPClient]] = {
     val ssh = new SSHClient(settings.sshConfig)
 
-    for{
+    for {
       blocker <- Blocker[IO]
       r <- Resource.make[IO, FtpClient[JSFTPClient]](IO.delay {
-        import settings._
+            import settings._
 
-        if (!strictHostKeyChecking)
-          ssh.addHostKeyVerifier(new PromiscuousVerifier)
-        else
-          knownHosts.map(new File(_)).foreach(ssh.loadKnownHosts)
+            if (!strictHostKeyChecking)
+              ssh.addHostKeyVerifier(new PromiscuousVerifier)
+            else
+              knownHosts.map(new File(_)).foreach(ssh.loadKnownHosts)
 
-        ssh.connect(host, port)
+            ssh.connect(host, port)
 
-        if (credentials.password != "" && sftpIdentity.isEmpty)
-          ssh.authPassword(credentials.username, credentials.password)
+            if (credentials.password != "" && sftpIdentity.isEmpty)
+              ssh.authPassword(credentials.username, credentials.password)
 
-        sftpIdentity.foreach(setIdentity(_, credentials.username)(ssh))
+            sftpIdentity.foreach(setIdentity(_, credentials.username)(ssh))
 
-        new SFtp(ssh.newSFTPClient(), blocker)
-      })(client =>
-        client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) IO.delay(ssh.disconnect()) else IO.unit)
-      )
+            new SFtp(ssh.newSFTPClient(), blocker)
+          })(client =>
+            client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) IO.delay(ssh.disconnect()) else IO.unit)
+          )
     } yield r
   }
 
