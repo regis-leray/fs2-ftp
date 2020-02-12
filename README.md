@@ -13,7 +13,7 @@ Setup
 ```
 //support scala 2.12 / 2.13
 
-libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.5.1"
+libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.6.0"
 ```
 
 How to use it ?
@@ -48,42 +48,47 @@ connect(settings).use(
 )     
  ```
 
-Required BlockingIO
----
+Required ContextShit[IO]
+----------------------
 
 ```scala
 trait FtpClient[+A] {
-  def stat(path: String)(implicit ec: ExecutionContext): IO[Option[FtpResource]]
-
-  def readFile(path: String, chunkSize: Int = 2048)(
-    implicit ec: ExecutionContext,
-    cs: ContextShift[IO]
-  ): fs2.Stream[IO, Byte]
-  def rm(path: String)(implicit ec: ExecutionContext): IO[Unit]
-  def rmdir(path: String)(implicit ec: ExecutionContext): IO[Unit]
-  def mkdir(path: String)(implicit ec: ExecutionContext): IO[Unit]
-  def ls(path: String)(implicit ec: ExecutionContext): fs2.Stream[IO, FtpResource]
-  def lsDescendant(path: String)(implicit ec: ExecutionContext): fs2.Stream[IO, FtpResource]
-  def upload(path: String, source: fs2.Stream[IO, Byte])(implicit ec: ExecutionContext, cs: ContextShift[IO]): IO[Unit]
-  def execute[T](f: A => T)(implicit ec: ExecutionContext): IO[T]
+  def stat(path: String)(implicit cs: ContextShift[IO]): IO[Option[FtpResource]]
+  def readFile(path: String, chunkSize: Int = 2048)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Byte]
+  def rm(path: String)(implicit cs: ContextShift[IO]): IO[Unit]
+  def rmdir(path: String)(implicit cs: ContextShift[IO]): IO[Unit]
+  def mkdir(path: String)(implicit cs: ContextShift[IO]): IO[Unit]
+  def ls(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, FtpResource]
+  def lsDescendant(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, FtpResource]
+  def upload(path: String, source: fs2.Stream[IO, Byte])(implicit cs: ContextShift[IO]): IO[Unit]
+  def execute[T](f: A => T)(implicit cs: ContextShift[IO]): IO[T]
 }
 ```
 
-All function required an implicit Execution Context.
+All function required an implicit ContextShit[IO].
 
-Since all (s)ftp command are IO bound task , it is required to provide an unbounded size Thread Pool (ExecutionContext)
+Since all (s)ftp command are IO bound task , it will be executed on specific blocking executionContext
+More information here https://typelevel.org/cats-effect/datatypes/contextshift.html
 
-More explanation: https://typelevel.org/cats-effect/concurrency/basics.html#choosing-thread-pool
 
 
-Here how to create an unbounded Execution Context
+Here how to provide an ContextShit
+
+* you can use the default one provided by `IOApp`
 ```scala
-import scala.concurrent.ExecutionContext
-import java.util.concurrent.Executors
-
-implicit val blockingIO = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+object MyApp extends cats.effect.IOApp {
+  //by default an implicit ContextShit is available as an implicit variable 
+}
 ```
 
+Or create your own ContextShit
+```scala
+import cats.effect.IO
+import cats.effect.ContextShift
+
+implicit val blockingIO = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
+implicit val cs: ContextShit[IO] = IO.contextShift(blockingIO)
+```
 
 
 
