@@ -9,7 +9,6 @@ import fs2.Stream._
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.{ OpenMode, Response, SFTPException, SFTPClient => JSFTPClient }
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
-import net.schmizz.sshj.userauth.keyprovider.OpenSSHKeyFile
 import net.schmizz.sshj.userauth.password.PasswordUtils
 import ray.fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity }
 
@@ -107,10 +106,10 @@ object SFtp {
 
             ssh.connect(host, port)
 
-            if (credentials.password != "" && sftpIdentity.isEmpty)
-              ssh.authPassword(credentials.username, credentials.password)
-
-            sftpIdentity.foreach(setIdentity(_, credentials.username)(ssh))
+            sftpIdentity
+              .fold(ssh.authPassword(credentials.username, credentials.password))(
+                setIdentity(_, credentials.username)(ssh)
+              )
 
             new SFtp(ssh.newSFTPClient(), blocker)
           })(client =>
@@ -122,20 +121,15 @@ object SFtp {
   private[this] def setIdentity(identity: SftpIdentity, username: String)(ssh: SSHClient): Unit = {
     def bats(array: Array[Byte]): String = new String(array, "UTF-8")
 
-    def initKey(f: OpenSSHKeyFile => Unit): Unit = {
-      val key = new OpenSSHKeyFile
-      f(key)
-      ssh.authPublickey(username, key)
-    }
-
     val passphrase =
-      identity.privateKeyFilePassphrase.map(pass => PasswordUtils.createOneOff(bats(pass).toCharArray)).orNull
+      identity.passphrase.map(pass => PasswordUtils.createOneOff(bats(pass.getBytes).toCharArray)).orNull
 
-    identity match {
+    val keyProvider = identity match {
       case id: RawKeySftpIdentity =>
-        initKey(_.init(bats(id.privateKey), id.publicKey.map(bats).orNull, passphrase))
+        ssh.loadKeys(bats(id.privateKey.getBytes), id.publicKey.map(p => bats(p.getBytes)).orNull, passphrase)
       case id: KeyFileSftpIdentity =>
-        initKey(_.init(new File(id.privateKey), passphrase))
+        ssh.loadKeys(id.privateKey.toString, passphrase)
     }
+    ssh.authPublickey(username, keyProvider)
   }
 }

@@ -7,7 +7,7 @@ import net.schmizz.sshj.sftp.Response.StatusCode
 import net.schmizz.sshj.sftp.SFTPException
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import ray.fs2.ftp.FtpSettings.{ FtpCredentials, SecureFtpSettings }
+import ray.fs2.ftp.FtpSettings.{ FtpCredentials, KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings }
 import ray.fs2.ftp.SFtp._
 
 import scala.concurrent.ExecutionContext
@@ -32,6 +32,27 @@ class SFtpTest extends AnyWordSpec with Matchers {
     }
 
     "connect with valid credentials" in {
+      connect(settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
+        case Right(_) =>
+      }
+    }
+
+    "connect with ssh key file " in {
+      val privatekey = io.Source.fromURI(this.getClass.getResource("/ssh_host_rsa_key").toURI).mkString
+
+      val settings = SecureFtpSettings("127.0.0.1", 3333, FtpCredentials("fooz", ""), RawKeySftpIdentity(privatekey))
+
+      connect(settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
+        case Right(_) =>
+      }
+    }
+
+    "connect with ssh key without passphrase" in {
+      val privatekey = Paths.get(this.getClass.getResource("/ssh_host_rsa_key").toURI)
+
+      val settings =
+        SecureFtpSettings("127.0.0.1", 3333, FtpCredentials("fooz", ""), KeyFileSftpIdentity(privatekey, None))
+
       connect(settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
