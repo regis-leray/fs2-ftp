@@ -1,6 +1,7 @@
 package ray.fs2.ftp
 
 import java.net.Proxy
+import java.nio.file.Path
 
 import net.schmizz.sshj.sftp.{ SFTPClient => JSFTPClient }
 import net.schmizz.sshj.{ Config => SshConfig, DefaultConfig => DefaultSshConfig }
@@ -9,69 +10,70 @@ import org.apache.commons.net.ftp.{ FTPClient => JFTPClient }
 sealed trait FtpSettings[A]
 
 object FtpSettings {
+
   final case class FtpCredentials(username: String, password: String)
+
+  sealed trait SftpIdentity {
+    type KeyType
+    val privateKey: KeyType
+    val passphrase: Option[String]
+  }
+
+  final case class RawKeySftpIdentity(privateKey: String, passphrase: Option[String], publicKey: Option[String])
+      extends SftpIdentity {
+    type KeyType = String
+  }
+
+  object RawKeySftpIdentity {
+
+    def apply(privateKey: String): RawKeySftpIdentity =
+      RawKeySftpIdentity(privateKey, None, None)
+
+    def apply(privateKey: String, passphrase: String): RawKeySftpIdentity =
+      RawKeySftpIdentity(privateKey, Some(passphrase), None)
+  }
+
+  final case class KeyFileSftpIdentity(privateKey: Path, passphrase: Option[String]) extends SftpIdentity {
+    type KeyType = Path
+  }
+
+  object KeyFileSftpIdentity {
+
+    def apply(privateKey: Path): KeyFileSftpIdentity =
+      KeyFileSftpIdentity(privateKey, None)
+  }
 
   final case class SecureFtpSettings(
     host: String,
     port: Int,
     credentials: FtpCredentials,
+    sftpIdentity: Option[SftpIdentity],
     strictHostKeyChecking: Boolean,
     knownHosts: Option[String],
-    sftpIdentity: Option[SftpIdentity],
     sshConfig: SshConfig
   ) extends FtpSettings[JSFTPClient]
 
-  sealed trait SftpIdentity {
-    type KeyType
-    val privateKey: KeyType
-    val privateKeyFilePassphrase: Option[Array[Byte]]
-  }
-
-  final case class RawKeySftpIdentity(
-    privateKey: Array[Byte],
-    privateKeyFilePassphrase: Option[Array[Byte]] = None,
-    publicKey: Option[Array[Byte]] = None
-  ) extends SftpIdentity {
-    type KeyType = Array[Byte]
-  }
-
-  final case class KeyFileSftpIdentity(privateKey: String, privateKeyFilePassphrase: Option[Array[Byte]] = None)
-      extends SftpIdentity {
-    type KeyType = String
-  }
-
-  object SftpIdentity {
-
-    def createRawSftpIdentity(privateKey: Array[Byte]): RawKeySftpIdentity =
-      RawKeySftpIdentity(privateKey)
-
-    def createRawSftpIdentity(privateKey: Array[Byte], privateKeyFilePassphrase: Array[Byte]): RawKeySftpIdentity =
-      RawKeySftpIdentity(privateKey, Some(privateKeyFilePassphrase))
-
-    def createRawSftpIdentity(
-      privateKey: Array[Byte],
-      privateKeyFilePassphrase: Array[Byte],
-      publicKey: Array[Byte]
-    ): RawKeySftpIdentity =
-      RawKeySftpIdentity(privateKey, Some(privateKeyFilePassphrase), Some(publicKey))
-
-    def createFileSftpIdentity(privateKey: String): KeyFileSftpIdentity =
-      KeyFileSftpIdentity(privateKey)
-
-    def createFileSftpIdentity(privateKey: String, privateKeyFilePassphrase: Array[Byte]): KeyFileSftpIdentity =
-      KeyFileSftpIdentity(privateKey, Some(privateKeyFilePassphrase))
-  }
-
   object SecureFtpSettings {
 
-    def apply(host: String, port: Int, creds: FtpCredentials): SecureFtpSettings =
+    def apply(host: String, port: Int, credentials: FtpCredentials): SecureFtpSettings =
       new SecureFtpSettings(
         host,
         port,
-        creds,
+        credentials,
+        sftpIdentity = None,
         strictHostKeyChecking = false,
         knownHosts = None,
-        sftpIdentity = None,
+        new DefaultSshConfig()
+      )
+
+    def apply(host: String, port: Int, credentials: FtpCredentials, identity: SftpIdentity): SecureFtpSettings =
+      new SecureFtpSettings(
+        host,
+        port,
+        credentials,
+        sftpIdentity = Some(identity),
+        strictHostKeyChecking = false,
+        knownHosts = None,
         new DefaultSshConfig()
       )
   }
@@ -94,4 +96,5 @@ object FtpSettings {
     def secure(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
       new UnsecureFtpSettings(host, port, creds, true, true, None, true)
   }
+
 }
