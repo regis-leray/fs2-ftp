@@ -13,7 +13,7 @@ Setup
 ```
 //support scala 2.12 / 2.13
 
-libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "0.6.0"
+libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "<version>"
 ```
 
 How to use it ?
