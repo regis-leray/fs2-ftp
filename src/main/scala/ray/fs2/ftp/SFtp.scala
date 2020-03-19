@@ -59,6 +59,9 @@ final private class SFtp(val ssh: SSHClient, blocker: Blocker) extends FtpClient
       input <- fs2.io.readInputStream(IO.pure(is), chunkSize, blocker)
     } yield input
 
+  def execute[T](f: JSFTPClient => T)(implicit cs: ContextShift[IO]): IO[T] =
+    blocker.delay[IO, T](f(unsafeClient))
+
   def rm(path: String)(implicit cs: ContextShift[IO]): IO[Unit] =
     execute(_.rm(path))
 
@@ -86,14 +89,11 @@ final private class SFtp(val ssh: SSHClient, blocker: Blocker) extends FtpClient
       }
       _ <- source.through(fs2.io.writeOutputStream(IO.pure(os), blocker))
     } yield ()).compile.drain
-
-  def execute[T](f: JSFTPClient => T)(implicit cs: ContextShift[IO]): IO[T] =
-    blocker.delay[IO, T](f(unsafeClient))
 }
 
 object SFtp {
 
-  def connect(settings: SecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JSFTPClient]] = {
+  def connect(settings: SecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JSFTPClient]] =
     for {
       blocker <- Blocker[IO]
       r <- Resource.make[IO, FtpClient[JSFTPClient]](IO.delay {
@@ -121,7 +121,6 @@ object SFtp {
             }
           )
     } yield r
-  }
 
   private[this] def setIdentity(identity: SftpIdentity, username: String)(ssh: SSHClient): Unit = {
     def bats(array: Array[Byte]): String = new String(array, "UTF-8")
