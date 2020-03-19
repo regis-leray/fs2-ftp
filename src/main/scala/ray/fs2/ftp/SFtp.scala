@@ -14,7 +14,9 @@ import ray.fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, Secure
 
 import scala.jdk.CollectionConverters._
 
-final private class SFtp(unsafeClient: JSFTPClient, blocker: Blocker) extends FtpClient[JSFTPClient] {
+final private class SFtp(val ssh: SSHClient, blocker: Blocker) extends FtpClient[JSFTPClient] {
+
+  private[this] val unsafeClient = ssh.newSFTPClient()
 
   def ls(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, FtpResource] =
     fs2.Stream
@@ -92,12 +94,12 @@ final private class SFtp(unsafeClient: JSFTPClient, blocker: Blocker) extends Ft
 object SFtp {
 
   def connect(settings: SecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JSFTPClient]] = {
-    val ssh = new SSHClient(settings.sshConfig)
-
     for {
       blocker <- Blocker[IO]
       r <- Resource.make[IO, FtpClient[JSFTPClient]](IO.delay {
             import settings._
+
+            val ssh = new SSHClient(settings.sshConfig)
 
             if (!strictHostKeyChecking)
               ssh.addHostKeyVerifier(new PromiscuousVerifier)
@@ -111,9 +113,12 @@ object SFtp {
                 setIdentity(_, credentials.username)(ssh)
               )
 
-            new SFtp(ssh.newSFTPClient(), blocker)
+            new SFtp(ssh, blocker)
           })(client =>
-            client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) IO.delay(ssh.disconnect()) else IO.unit)
+            client.execute(_.close()).attempt.flatMap { _ =>
+              val sftp = client.asInstanceOf[SFtp]
+              if (sftp.ssh.isConnected) IO.delay(sftp.ssh.disconnect()) else IO.unit
+            }
           )
     } yield r
   }
