@@ -16,10 +16,8 @@ import scala.io.Source
 class SFtpTest extends AnyWordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.global
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
-
-  private val settings = SecureFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
-
   val home = Paths.get("ftp-home/sftp/home/foo")
+  private val settings = SecureFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
 
   "SFtp" should {
     "connect with invalid credentials" in {
@@ -265,8 +263,13 @@ class SFtpTest extends AnyWordSpec with Matchers {
           _.ls("/").compile.toList
         )
 
-      fs2.Stream.repeatEval(ls).take(2).compile.toList
-        .unsafeRunSync().flatten
+      fs2.Stream
+        .repeatEval(ls)
+        .take(2)
+        .compile
+        .toList
+        .unsafeRunSync()
+        .flatten
         .map(_.path) should contain allElementsOf List("/notes.txt", "/dir1")
     }
   }
