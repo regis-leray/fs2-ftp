@@ -16,8 +16,8 @@ import scala.io.Source
 class SFtpTest extends AnyWordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.global
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
-  val home = Paths.get("ftp-home/sftp/home/foo")
-  private val settings = SecureFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
+  val home                                  = Paths.get("ftp-home/sftp/home/foo")
+  private val settings                      = SecureFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
 
   "SFtp" should {
     "connect with invalid credentials" in {
@@ -257,8 +257,8 @@ class SFtpTest extends AnyWordSpec with Matchers {
       }
     }
 
-    "connect and disconect multiple times in a arow" in {
-      val ls: IO[List[FtpResource]] = connect(settings)
+    "connect and disconect multiple times in a row" in {
+      val ls = connect(settings)
         .use(
           _.ls("/").compile.toList
         )
