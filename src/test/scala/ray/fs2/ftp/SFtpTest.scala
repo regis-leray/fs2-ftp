@@ -258,5 +258,16 @@ class SFtpTest extends AnyWordSpec with Matchers {
         case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>
       }
     }
+
+    "connect and disconect multiple times in a arow" in {
+      val ls: IO[List[FtpResource]] = connect(settings)
+        .use(
+          _.ls("/").compile.toList
+        )
+
+      fs2.Stream.repeatEval(ls).take(2).compile.toList
+        .unsafeRunSync().flatten
+        .map(_.path) should contain allElementsOf List("/notes.txt", "/dir1")
+    }
   }
 }
