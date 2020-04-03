@@ -91,10 +91,10 @@ final private class SFtp(unsafeClient: JSFTPClient, blocker: Blocker) extends Ft
 
 object SFtp {
 
-  def connect(settings: SecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JSFTPClient]] = {
-    val ssh = new SSHClient(settings.sshConfig)
-
+  def connect(settings: SecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JSFTPClient]] =
     for {
+      ssh <- Resource.liftF(IO(new SSHClient(settings.sshConfig)))
+
       blocker <- Blocker[IO]
       r <- Resource.make[IO, FtpClient[JSFTPClient]](IO.delay {
             import settings._
@@ -116,7 +116,6 @@ object SFtp {
             client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) IO.delay(ssh.disconnect()) else IO.unit)
           )
     } yield r
-  }
 
   private[this] def setIdentity(identity: SftpIdentity, username: String)(ssh: SSHClient): Unit = {
     def bats(array: Array[Byte]): String = new String(array, "UTF-8")
