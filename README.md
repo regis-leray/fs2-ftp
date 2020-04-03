@@ -7,8 +7,7 @@ fs2 ftp client built on top of [Cats Effect](https://typelevel.org/cats-effect/)
 [![Maven Central](https://img.shields.io/maven-central/v/com.github.regis-leray/fs2-ftp_2.12.svg)](http://search.maven.org/#search%7Cga%7C1%7Cfs2-ftp) 
 <a href="https://typelevel.org/cats/"><img src="https://typelevel.org/cats/img/cats-badge.svg" height="40px" align="right" alt="Cats friendly" /></a>
 
-Setup
------
+## Setup
 
 ```
 //support scala 2.12 / 2.13
@@ -16,10 +15,9 @@ Setup
 libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "<version>"
 ```
 
-How to use it ?
----
+## How to use it ?
 
-* FTP / FTPS
+### FTP / FTPS
 
 ```scala
 import ray.fs2.ftp.FtpClient._
@@ -35,8 +33,9 @@ connect(settings).use{
 }
 ```
 
-* SFTP
+### SFTP
 
+#### Password authentication
 ```scala
 import ray.fs2.ftp.FtpClient._
 import ray.fs2.ftp.FtpSettings._
@@ -48,8 +47,24 @@ connect(settings).use(
 )     
  ```
 
-Required ContextShit[IO]
-----------------------
+#### private key authentication
+```scala
+import ray.fs2.ftp.FtpClient._
+import ray.fs2.ftp.FtpSettings._
+import java.nio.file.Paths._
+
+// Provide a SftpIdentity implementation
+
+val keyFile = KeyFileSftpIdentity(Paths.get("privateKeyStringPath"))
+
+val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", ""), keyFile)
+
+connect(settings).use(
+  _.ls("/").compile.toList
+)     
+ ```
+
+## Required ContextShit[IO]
 
 ```scala
 trait FtpClient[+A] {
@@ -92,9 +107,7 @@ implicit val cs: ContextShit[IO] = IO.contextShift(blockingIO)
 
 
 
-Support any commands ?
----
-
+## Support any commands ?
 The underlying client is safely exposed and you have access to all possible ftp commands
 
 ```scala
@@ -107,15 +120,11 @@ connect(settings).use(
   _.execute(_.version())
 )     
  ```
- 
 
-
-
-
-How to release
----
+## How to release
 
 1. How to create a key to signed artifact
+
 ```
 # generate key
 $ gpg --gen-key
