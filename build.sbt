@@ -47,7 +47,7 @@ lazy val `fs2-ftp` = project
       "org.apache.logging.log4j" % "log4j-api"                % "2.13.2" % Test,
       "org.apache.logging.log4j" % "log4j-core"               % "2.13.2" % Test,
       "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.13.2" % Test,
-      "org.scalatest"            %% "scalatest"               % "3.1.1" % Test
+      "org.scalatest"            %% "scalatest"               % "3.1.2" % Test
     )
   )
 
