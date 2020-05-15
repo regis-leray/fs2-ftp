@@ -50,6 +50,8 @@ object FtpSettings {
     sftpIdentity: Option[SftpIdentity],
     strictHostKeyChecking: Boolean,
     knownHosts: Option[String],
+    timeOut: Int,
+    connectTimeOut: Int,
     sshConfig: SshConfig
   ) extends FtpSettings[JSFTPClient]
 
@@ -63,6 +65,8 @@ object FtpSettings {
         sftpIdentity = None,
         strictHostKeyChecking = false,
         knownHosts = None,
+        0,
+        0,
         new DefaultSshConfig()
       )
 
@@ -74,6 +78,8 @@ object FtpSettings {
         sftpIdentity = Some(identity),
         strictHostKeyChecking = false,
         knownHosts = None,
+        0,
+        0,
         new DefaultSshConfig()
       )
   }
@@ -85,16 +91,18 @@ object FtpSettings {
     binary: Boolean,
     passiveMode: Boolean,
     proxy: Option[Proxy],
-    secure: Boolean
+    secure: Boolean,
+    timeOut: Int,
+    connectTimeOut: Int
   ) extends FtpSettings[JFTPClient]
 
   object UnsecureFtpSettings {
 
     def apply(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
-      new UnsecureFtpSettings(host, port, creds, true, true, None, false)
+      new UnsecureFtpSettings(host, port, creds, true, true, None, false, 0, 0)
 
     def secure(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
-      new UnsecureFtpSettings(host, port, creds, true, true, None, true)
+      new UnsecureFtpSettings(host, port, creds, true, true, None, true, 0, 0)
   }
 
 }
