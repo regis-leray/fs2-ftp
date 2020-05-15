@@ -104,6 +104,9 @@ object SFtp {
             else
               knownHosts.map(new File(_)).foreach(ssh.loadKnownHosts)
 
+            ssh.setTimeout(settings.timeOut)
+            ssh.setConnectTimeout(settings.connectTimeOut)
+
             ssh.connect(host, port)
 
             sftpIdentity

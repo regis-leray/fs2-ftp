@@ -83,6 +83,9 @@ object Ftp {
                   ftpClient.setFileType(FTP.BINARY_FILE_TYPE)
                 }
 
+                ftpClient.setConnectTimeout(settings.connectTimeOut)
+                ftpClient.setDefaultTimeout(settings.timeOut)
+
                 if (settings.passiveMode) {
                   ftpClient.enterLocalPassiveMode()
                 }
