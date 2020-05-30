@@ -130,6 +130,55 @@ effect implementation as long your favourite library provide the type classes ne
 
 The library is by default bringing the dependency `cats-effect`
 
+
+### exemple for monix
+
+You will need to use add in build.sbt [monix-eval](https://github.com/monix/monix)
+
+```
+libraryDependencies += "io.monix" %% "monix-eval" % "3.2.1"
+```
+
+```scala
+import fs2.ftp.FtpSettings._
+import fs2.ftp._
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
+import Task.contextShift
+
+val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+
+val _: Task[List[FtpResource]] = connect(settings).use {
+  _.ls("/").compile.toList
+}
+```
+
+### exemple for zio
+
+You will need to use add in build.sbt [zio-cats-interop](https://github.com/zio/interop-cats)
+
+```
+libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.1.3.0-RC15"
+```
+
+```scala
+import fs2.ftp.FtpSettings._
+import zio.interop.catz._
+import zio.ZIO
+
+val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+
+ZIO.runtime.map { implicit r: zio.Runtime[Any] =>
+  implicit val CE: ConcurrentEffect[zio.Task] = implicitly
+  implicit val CS: ContextShift[zio.Task] = implicitly
+
+  connect(settings).use {
+    _.ls("/").compile.toList
+  }
+}
+```
+
+
 ## How to release
 
 1. How to create a key to signed artifact
