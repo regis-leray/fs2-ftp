@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.attribute.PosixFilePermission._

@@ -1,23 +1,22 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.io._
 
-import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource }
-import cats.implicits._
+import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource, Sync }
+import cats.syntax.applicativeError._
+import cats.syntax.flatMap._
 import fs2.Stream
 import fs2.Stream._
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.{ OpenMode, Response, SFTPException, SFTPClient => JSFTPClient }
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import net.schmizz.sshj.userauth.password.PasswordUtils
-import ray.fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity }
+import fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity }
 
 import scala.jdk.CollectionConverters._
 
-final private class SFtp[F[_]](unsafeClient: JSFTPClient, blocker: Blocker)(
-  implicit CE: ConcurrentEffect[F],
-  CS: ContextShift[F]
-) extends FtpClient[F, JSFTPClient] {
+final private class SecureFtp[F[_]: ConcurrentEffect: ContextShift](unsafeClient: SecureFtp.Client, blocker: Blocker)
+    extends FtpClient[F, JSFTPClient] {
 
   def ls(path: String): fs2.Stream[F, FtpResource] =
     fs2.Stream
@@ -57,7 +56,7 @@ final private class SFtp[F[_]](unsafeClient: JSFTPClient, blocker: Blocker)(
           }
       }
 
-      input <- fs2.io.readInputStream(CE.pure(is), chunkSize, blocker)
+      input <- fs2.io.readInputStream(Sync[F].pure(is), chunkSize, blocker)
     } yield input
 
   def rm(path: String): F[Unit] =
@@ -85,23 +84,25 @@ final private class SFtp[F[_]](unsafeClient: JSFTPClient, blocker: Blocker)(
             super.close()
           }
       }
-      _ <- source.through(fs2.io.writeOutputStream(CE.pure(os), blocker))
+      _ <- source.through(fs2.io.writeOutputStream(Sync[F].pure(os), blocker))
     } yield ()).compile.drain
 
   def execute[T](f: JSFTPClient => T): F[T] =
     blocker.delay[F, T](f(unsafeClient))
 }
 
-object SFtp {
+object SecureFtp {
 
-  def connect[F[_]](
+  type Client = JSFTPClient
+
+  def connect[F[_]: ContextShift: ConcurrentEffect](
     settings: SecureFtpSettings
-  )(implicit CS: ContextShift[F], CE: ConcurrentEffect[F]): Resource[F, FtpClient[F, JSFTPClient]] =
+  ): Resource[F, FtpClient[F, SecureFtp.Client]] =
     for {
-      ssh <- Resource.liftF(CE.delay(new SSHClient(settings.sshConfig)))
+      ssh <- Resource.liftF(Sync[F].delay(new SSHClient(settings.sshConfig)))
 
       blocker <- Blocker[F]
-      r <- Resource.make[F, FtpClient[F, JSFTPClient]](CE.delay {
+      r <- Resource.make[F, FtpClient[F, JSFTPClient]](Sync[F].delay {
             import settings._
 
             if (!strictHostKeyChecking)
@@ -119,9 +120,12 @@ object SFtp {
                 setIdentity(_, credentials.username)(ssh)
               )
 
-            new SFtp(ssh.newSFTPClient(), blocker)
+            new SecureFtp(ssh.newSFTPClient(), blocker)
           })(client =>
-            client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) CE.delay(ssh.disconnect()) else CE.unit)
+            client
+              .execute(_.close())
+              .attempt
+              .flatMap(_ => if (ssh.isConnected) Sync[F].delay(ssh.disconnect()) else Sync[F].unit)
           )
     } yield r
 

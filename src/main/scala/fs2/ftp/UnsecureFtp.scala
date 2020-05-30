@@ -1,16 +1,19 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.io.{ FileNotFoundException, InputStream }
 
-import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource }
-import cats.implicits._
+import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource, Sync }
+import cats.syntax.applicativeError._
+import cats.syntax.flatMap._
+import cats.syntax.functor._
+import cats.syntax.monadError._
 import fs2.Stream
-import org.apache.commons.net.ftp.{ FTP, FTPSClient, FTPClient => JFTPClient }
-import ray.fs2.ftp.FtpSettings.UnsecureFtpSettings
+import org.apache.commons.net.ftp.{ FTP, FTPSClient => JFTPSClient, FTPClient => JFTPClient }
+import FtpSettings.UnsecureFtpSettings
 
-final private class Ftp[F[_]](unsafeClient: JFTPClient, blocker: Blocker)(
-  implicit CE: ConcurrentEffect[F],
-  CS: ContextShift[F]
+final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](
+  unsafeClient: UnsecureFtp.Client,
+  blocker: Blocker
 ) extends FtpClient[F, JFTPClient] {
 
   def stat(path: String): F[Option[FtpResource]] =
@@ -19,7 +22,9 @@ final private class Ftp[F[_]](unsafeClient: JFTPClient, blocker: Blocker)(
   def readFile(path: String, chunkSize: Int = 2048): fs2.Stream[F, Byte] = {
     val is = execute(client => Option(client.retrieveFileStream(path)))
       .flatMap(
-        _.fold(CE.raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(x => CE.pure(x))
+        _.fold(Sync[F].raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(x =>
+          Sync[F].pure(x)
+        )
       )
 
     fs2.io.readInputStream(is, chunkSize, blocker)
@@ -70,17 +75,20 @@ final private class Ftp[F[_]](unsafeClient: JFTPClient, blocker: Blocker)(
     blocker.delay[F, T](f(unsafeClient))
 }
 
-object Ftp {
+object UnsecureFtp {
 
-  def connect[F[_]](
+  type Client = JFTPClient
+
+  def connect[F[_]: ContextShift: ConcurrentEffect](
     settings: UnsecureFtpSettings
-  )(implicit CS: ContextShift[F], CE: ConcurrentEffect[F]): Resource[F, FtpClient[F, JFTPClient]] =
+  ): Resource[F, FtpClient[F, UnsecureFtp.Client]] =
     for {
       blocker <- Blocker[F]
 
       r <- Resource.make[F, FtpClient[F, JFTPClient]] {
-            CE.delay {
-                val ftpClient = if (settings.secure) new FTPSClient() else new JFTPClient()
+            Sync[F]
+              .delay {
+                val ftpClient = if (settings.ssl) new JFTPSClient() else new JFTPClient()
                 settings.proxy.foreach(ftpClient.setProxy)
                 ftpClient.connect(settings.host, settings.port)
 
@@ -97,14 +105,14 @@ object Ftp {
                   ftpClient.enterLocalPassiveMode()
                 }
 
-                success -> new Ftp[F](ftpClient, blocker)
+                success -> new UnsecureFtp[F](ftpClient, blocker)
               }
               .ensure(ConnectionError(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
               .map(_._2)
           } { client =>
             for {
               connected <- client.execute(_.isConnected)
-              _ <- if (!connected) CE.pure(())
+              _ <- if (!connected) Sync[F].pure(())
                   else
                     client
                       .execute(_.logout)
