@@ -11,7 +11,7 @@ import fs2.ftp.FtpSettings.{ FtpCredentials, KeyFileSftpIdentity, RawKeySftpIden
 import scala.concurrent.ExecutionContext
 import scala.io.Source
 
-class SecureFtpTest extends AnyWordSpec with Matchers {
+class SecureFtpSpec extends AnyWordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.global
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 

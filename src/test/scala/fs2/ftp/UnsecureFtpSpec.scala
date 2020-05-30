@@ -229,3 +229,13 @@ trait BaseFtpTest extends AnyWordSpec with Matchers {
     }
   }
 }
+
+class UnsecureFtpSslTest extends BaseFtpTest {
+
+  override val settings: UnsecureFtpSettings =
+    UnsecureFtpSettings.ssl("127.0.0.1", 2121, FtpCredentials("username", "userpass"))
+}
+
+class UnsecureFtpTest extends BaseFtpTest {
+  override val settings = UnsecureFtpSettings("127.0.0.1", port = 2121, FtpCredentials("username", "userpass"))
+}
