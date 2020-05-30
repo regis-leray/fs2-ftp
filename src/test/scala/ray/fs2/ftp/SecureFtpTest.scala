@@ -8,12 +8,11 @@ import net.schmizz.sshj.sftp.SFTPException
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import ray.fs2.ftp.FtpSettings.{ FtpCredentials, KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings }
-import ray.fs2.ftp.SFtp._
-
+import ray.fs2.ftp.SecureFtp._
 import scala.concurrent.ExecutionContext
 import scala.io.Source
 
-class SFtpTest extends AnyWordSpec with Matchers {
+class SecureFtpTest extends AnyWordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.global
   implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
 

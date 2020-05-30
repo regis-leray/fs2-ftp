@@ -21,13 +21,13 @@ libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "<version>"
 
 ```scala
 import cats.effect.IO
-import ray.fs2.ftp.FtpClient._
+import ray.fs2.ftp.UnsecureFtp._
 import ray.fs2.ftp.FtpSettings._
 
 // FTP
 val settings = UnsecureFtpSettings("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 // FTP-SSL 
-val settings = UnsecureFtpSettings.secure("127.0.0.1", 21, FtpCredentials("foo", "bar"))
+val settings = UnsecureFtpSettings.ssl("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 
 connect[IO](settings).use{
   _.ls("/").compile.toList
@@ -38,7 +38,7 @@ connect[IO](settings).use{
 
 #### Password authentication
 ```scala
-import ray.fs2.ftp.FtpClient._
+import ray.fs2.ftp.SecureFtp._
 import ray.fs2.ftp.FtpSettings._
 import cats.effect.IO
 
@@ -51,7 +51,7 @@ connect[IO](settings).use(
 
 #### private key authentication
 ```scala
-import ray.fs2.ftp.FtpClient._
+import ray.fs2.ftp.SecureFtp._
 import ray.fs2.ftp.FtpSettings._
 import java.nio.file.Paths._
 import cats.effect.IO
@@ -69,19 +69,18 @@ connect[IO](settings).use(
 
 ## Required ContextShift
 
-All function required an implicit ContextShit[IO].
-
 Since all (s)ftp command are IO bound task , it will be executed on specific blocking executionContext
 More information here https://typelevel.org/cats-effect/datatypes/contextshift.html
-
-
 
 Here how to provide an ContextShift
 
 * you can use the default one provided by `IOApp`
 ```scala
+import ray.fs2.ftp._
+import ray.fs2.ftp.FtpSettings._
+
 object MyApp extends cats.effect.IOApp {
-  //by default an implicit ContextShit is available as an implicit variable 
+  //by default an implicit ContextShit is available as an implicit variable   
 }
 ```
 
@@ -94,13 +93,12 @@ implicit val blockingIO = ExecutionContext.fromExecutor(Executors.newCachedThrea
 implicit val cs: ContextShift[IO] = IO.contextShift(blockingIO)
 ```
 
-
-
 ## Support any commands ?
 The underlying client is safely exposed and you have access to all possible ftp commands
 
 ```scala
-import ray.fs2.ftp.FtpClient._
+import cats.effect.IO
+import ray.fs2.ftp.SecureFtp._
 import ray.fs2.ftp.FtpSettings._
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
