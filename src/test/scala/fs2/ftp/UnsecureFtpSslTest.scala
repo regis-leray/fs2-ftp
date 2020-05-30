@@ -1,6 +1,6 @@
-package ray.fs2.ftp
+package fs2.ftp
 
-import ray.fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
+import fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
 
 class UnsecureFtpSslTest extends BaseFtpTest {
 

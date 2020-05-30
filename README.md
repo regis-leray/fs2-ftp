@@ -21,8 +21,8 @@ libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "<version>"
 
 ```scala
 import cats.effect.IO
-import ray.fs2.ftp.UnsecureFtp._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp.UnsecureFtp._
+import fs2.ftp.FtpSettings._
 
 // FTP
 val settings = UnsecureFtpSettings("127.0.0.1", 21, FtpCredentials("foo", "bar"))
@@ -38,8 +38,8 @@ connect[IO](settings).use{
 
 #### Password authentication
 ```scala
-import ray.fs2.ftp.SecureFtp._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp.SecureFtp._
+import fs2.ftp.FtpSettings._
 import cats.effect.IO
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
@@ -51,8 +51,8 @@ connect[IO](settings).use(
 
 #### private key authentication
 ```scala
-import ray.fs2.ftp.SecureFtp._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp.SecureFtp._
+import fs2.ftp.FtpSettings._
 import java.nio.file.Paths._
 import cats.effect.IO
 
@@ -76,8 +76,8 @@ Here how to provide an ContextShift
 
 * you can use the default one provided by `IOApp`
 ```scala
-import ray.fs2.ftp._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp._
+import fs2.ftp.FtpSettings._
 
 object MyApp extends cats.effect.IOApp {
   //by default an implicit ContextShit is available as an implicit variable   
@@ -98,8 +98,8 @@ The underlying client is safely exposed and you have access to all possible ftp 
 
 ```scala
 import cats.effect.IO
-import ray.fs2.ftp.SecureFtp._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp.SecureFtp._
+import fs2.ftp.FtpSettings._
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
 

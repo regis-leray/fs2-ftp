@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.net.Proxy
 import java.nio.file.Path

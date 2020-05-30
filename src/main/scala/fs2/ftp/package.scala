@@ -1,7 +1,7 @@
-package ray.fs2
+package fs2
 
 import cats.effect.{ ConcurrentEffect, ContextShift, Resource }
-import ray.fs2.ftp.FtpSettings.{ SecureFtpSettings, UnsecureFtpSettings }
+import fs2.ftp.FtpSettings.{ SecureFtpSettings, UnsecureFtpSettings }
 
 package object ftp {
 

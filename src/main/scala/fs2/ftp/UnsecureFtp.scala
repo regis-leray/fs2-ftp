@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.io.{ FileNotFoundException, InputStream }
 
@@ -9,7 +9,7 @@ import cats.syntax.functor._
 import cats.syntax.monadError._
 import fs2.Stream
 import org.apache.commons.net.ftp.{ FTP, FTPSClient, FTPClient => JFTPClient }
-import ray.fs2.ftp.FtpSettings.UnsecureFtpSettings
+import FtpSettings.UnsecureFtpSettings
 
 final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](unsafeClient: JFTPClient, blocker: Blocker)
     extends FtpClient[F, JFTPClient] {

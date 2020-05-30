@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.io.FileNotFoundException
 import java.nio.file.{ Files, Paths }
@@ -7,10 +7,9 @@ import java.util.concurrent.Executors
 import cats.effect.{ Blocker, ContextShift, IO, Resource }
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import ray.fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
+import FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
 import scala.concurrent.ExecutionContext
 import scala.io.Source
-import ray.fs2.ftp.UnsecureFtp._
 
 trait BaseFtpTest extends AnyWordSpec with Matchers {
   implicit private val ec: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))

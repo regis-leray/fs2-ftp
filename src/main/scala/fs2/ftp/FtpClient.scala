@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import fs2.Stream
 

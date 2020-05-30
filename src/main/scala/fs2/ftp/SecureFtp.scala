@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.io._
 
@@ -11,7 +11,7 @@ import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.{ OpenMode, Response, SFTPException, SFTPClient => JSFTPClient }
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import net.schmizz.sshj.userauth.password.PasswordUtils
-import ray.fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity }
+import fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity }
 
 import scala.jdk.CollectionConverters._
 
