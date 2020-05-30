@@ -125,7 +125,7 @@ connect[IO](settings).use(
 
 ## Support any effect (IO, Monix, ZIO)
 
-Since the library is following the paradigm polymorph `F[_]` (aka tagless final) we can create provide any
+Since the library is following the paradigm polymorph `F[_]` (aka tagless final) you can use any
 effect implementation as long your favourite library provide the type classes needed define by `cats-effect`
 
 The library is by default bringing the dependency `cats-effect`
