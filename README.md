@@ -79,12 +79,23 @@ Here how to provide an ContextShift
 
 * you can use the default one provided by `IOApp`
 ```scala
+import cats.effect.{ExitCode, IO}
 import fs2.ftp._
 import fs2.ftp.FtpSettings._
 
 object MyApp extends cats.effect.IOApp {
   //by default an implicit ContextShift[IO] is available as an implicit variable   
   //F[_] Effect will be set as cats.effect.IO
+  
+  val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+  
+  //print all files/directories
+  def run(args: List[String]): IO[ExitCode] ={
+    connect(settings).use(_.ls("/mypath")
+      .evalTap(r => IO(println(r)))
+      .compile.drain)
+      .redeem(_ => ExitCode.Error, _ => ExitCode.Success)          
+  }
 }
 ```
 
@@ -112,7 +123,7 @@ connect[IO](settings).use(
 )     
  ```
 
-### Support any effect (IO, Monix, ZIO)
+## Support any effect (IO, Monix, ZIO)
 
 Since the library is following the paradigm polymorph `F[_]` (aka tagless final) we can create provide any
 effect implementation as long your favourite library provide the type classes needed define by `cats-effect`

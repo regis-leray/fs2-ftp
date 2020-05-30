@@ -8,11 +8,13 @@ import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
 import fs2.Stream
-import org.apache.commons.net.ftp.{ FTP, FTPSClient, FTPClient => JFTPClient }
+import org.apache.commons.net.ftp.{ FTP, FTPSClient => JFTPSClient, FTPClient => JFTPClient }
 import FtpSettings.UnsecureFtpSettings
 
-final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](unsafeClient: JFTPClient, blocker: Blocker)
-    extends FtpClient[F, JFTPClient] {
+final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](
+  unsafeClient: UnsecureFtp.Client,
+  blocker: Blocker
+) extends FtpClient[F, JFTPClient] {
 
   def stat(path: String): F[Option[FtpResource]] =
     execute(client => Option(client.mlistFile(path)).map(FtpResource(_)))
@@ -86,7 +88,7 @@ object UnsecureFtp {
       r <- Resource.make[F, FtpClient[F, JFTPClient]] {
             Sync[F]
               .delay {
-                val ftpClient = if (settings.ssl) new FTPSClient() else new JFTPClient()
+                val ftpClient = if (settings.ssl) new JFTPSClient() else new JFTPClient()
                 settings.proxy.foreach(ftpClient.setProxy)
                 ftpClient.connect(settings.host, settings.port)
 
