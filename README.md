@@ -20,6 +20,7 @@ libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "<version>"
 ### FTP / FTPS
 
 ```scala
+import cats.effect.IO
 import ray.fs2.ftp.FtpClient._
 import ray.fs2.ftp.FtpSettings._
 
@@ -28,7 +29,7 @@ val settings = UnsecureFtpSettings("127.0.0.1", 21, FtpCredentials("foo", "bar")
 // FTP-SSL 
 val settings = UnsecureFtpSettings.secure("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 
-connect(settings).use{
+connect[IO](settings).use{
   _.ls("/").compile.toList
 }
 ```
@@ -39,10 +40,11 @@ connect(settings).use{
 ```scala
 import ray.fs2.ftp.FtpClient._
 import ray.fs2.ftp.FtpSettings._
+import cats.effect.IO
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
 
-connect(settings).use(
+connect[IO](settings).use(
   _.ls("/").compile.toList
 )     
  ```
@@ -52,6 +54,7 @@ connect(settings).use(
 import ray.fs2.ftp.FtpClient._
 import ray.fs2.ftp.FtpSettings._
 import java.nio.file.Paths._
+import cats.effect.IO
 
 // Provide a SftpIdentity implementation
 
@@ -59,26 +62,12 @@ val keyFile = KeyFileSftpIdentity(Paths.get("privateKeyStringPath"))
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", ""), keyFile)
 
-connect(settings).use(
+connect[IO](settings).use(
   _.ls("/").compile.toList
 )     
  ```
 
-## Required ContextShit[IO]
-
-```scala
-trait FtpClient[+A] {
-  def stat(path: String)(implicit cs: ContextShift[IO]): IO[Option[FtpResource]]
-  def readFile(path: String, chunkSize: Int = 2048)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Byte]
-  def rm(path: String)(implicit cs: ContextShift[IO]): IO[Unit]
-  def rmdir(path: String)(implicit cs: ContextShift[IO]): IO[Unit]
-  def mkdir(path: String)(implicit cs: ContextShift[IO]): IO[Unit]
-  def ls(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, FtpResource]
-  def lsDescendant(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, FtpResource]
-  def upload(path: String, source: fs2.Stream[IO, Byte])(implicit cs: ContextShift[IO]): IO[Unit]
-  def execute[T](f: A => T)(implicit cs: ContextShift[IO]): IO[T]
-}
-```
+## Required ContextShift
 
 All function required an implicit ContextShit[IO].
 
@@ -87,7 +76,7 @@ More information here https://typelevel.org/cats-effect/datatypes/contextshift.h
 
 
 
-Here how to provide an ContextShit
+Here how to provide an ContextShift
 
 * you can use the default one provided by `IOApp`
 ```scala
@@ -96,13 +85,13 @@ object MyApp extends cats.effect.IOApp {
 }
 ```
 
-Or create your own ContextShit
+Or create your own ContextShift
 ```scala
 import cats.effect.IO
 import cats.effect.ContextShift
 
 implicit val blockingIO = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
-implicit val cs: ContextShit[IO] = IO.contextShift(blockingIO)
+implicit val cs: ContextShift[IO] = IO.contextShift(blockingIO)
 ```
 
 
@@ -116,7 +105,7 @@ import ray.fs2.ftp.FtpSettings._
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
 
-connect(settings).use(
+connect[IO](settings).use(
   _.execute(_.version())
 )     
  ```
