@@ -2,8 +2,8 @@ package ray.fs2.ftp
 
 import java.io._
 
-import cats.effect.{ Blocker, ContextShift, IO, Resource }
-import cats.syntax.applicativeError._
+import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource }
+import cats.implicits._
 import fs2.Stream
 import fs2.Stream._
 import net.schmizz.sshj.SSHClient
@@ -14,33 +14,36 @@ import ray.fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, Secure
 
 import scala.jdk.CollectionConverters._
 
-final private class SFtp(unsafeClient: JSFTPClient, blocker: Blocker) extends FtpClient[JSFTPClient] {
+final private class SFtp[F[_]](unsafeClient: JSFTPClient, blocker: Blocker)(
+  implicit CE: ConcurrentEffect[F],
+  CS: ContextShift[F]
+) extends FtpClient[F, JSFTPClient] {
 
-  def ls(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, FtpResource] =
+  def ls(path: String): fs2.Stream[F, FtpResource] =
     fs2.Stream
       .evalSeq(execute(_.ls(path).asScala.toSeq))
       .map(FtpResource(_))
       .recoverWith {
-        case ex: SFTPException if ex.getStatusCode == Response.StatusCode.NO_SUCH_FILE => fs2.Stream.empty.covary[IO]
-        case other                                                                     => fs2.Stream.raiseError[IO](other)
+        case ex: SFTPException if ex.getStatusCode == Response.StatusCode.NO_SUCH_FILE => fs2.Stream.empty.covary[F]
+        case other                                                                     => fs2.Stream.raiseError[F](other)
       }
 
-  def lsDescendant(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, FtpResource] =
+  def lsDescendant(path: String): fs2.Stream[F, FtpResource] =
     fs2.Stream
       .evalSeq(execute(_.ls(path).asScala.toSeq))
       .flatMap(f => if (f.isDirectory) lsDescendant(f.getPath) else Stream(FtpResource(f)))
       .recoverWith {
-        case ex: SFTPException if ex.getStatusCode == Response.StatusCode.NO_SUCH_FILE => fs2.Stream.empty.covary[IO]
-        case other                                                                     => fs2.Stream.raiseError[IO](other)
+        case ex: SFTPException if ex.getStatusCode == Response.StatusCode.NO_SUCH_FILE => fs2.Stream.empty.covary[F]
+        case other                                                                     => fs2.Stream.raiseError[F](other)
       }
 
-  def stat(path: String)(implicit cs: ContextShift[IO]): IO[Option[FtpResource]] =
+  def stat(path: String): F[Option[FtpResource]] =
     execute(client => Option(client.statExistence(path)).map(FtpResource(path, _)))
 
   def readFile(
     path: String,
     chunkSize: Int = 10 * 1024
-  )(implicit cs: ContextShift[IO]): fs2.Stream[IO, Byte] =
+  ): fs2.Stream[F, Byte] =
     for {
       remoteFile <- Stream.eval(execute(_.open(path, java.util.EnumSet.of(OpenMode.READ))))
 
@@ -54,22 +57,22 @@ final private class SFtp(unsafeClient: JSFTPClient, blocker: Blocker) extends Ft
           }
       }
 
-      input <- fs2.io.readInputStream(IO.pure(is), chunkSize, blocker)
+      input <- fs2.io.readInputStream(CE.pure(is), chunkSize, blocker)
     } yield input
 
-  def rm(path: String)(implicit cs: ContextShift[IO]): IO[Unit] =
+  def rm(path: String): F[Unit] =
     execute(_.rm(path))
 
-  def rmdir(path: String)(implicit cs: ContextShift[IO]): IO[Unit] =
+  def rmdir(path: String): F[Unit] =
     execute(_.rmdir(path))
 
-  def mkdir(path: String)(implicit cs: ContextShift[IO]): IO[Unit] =
+  def mkdir(path: String): F[Unit] =
     execute(_.mkdir(path))
 
   def upload(
     path: String,
-    source: fs2.Stream[IO, Byte]
-  )(implicit cs: ContextShift[IO]): IO[Unit] =
+    source: fs2.Stream[F, Byte]
+  ): F[Unit] =
     (for {
       remoteFile <- Stream.eval(execute(_.open(path, java.util.EnumSet.of(OpenMode.WRITE, OpenMode.CREAT))))
 
@@ -82,27 +85,32 @@ final private class SFtp(unsafeClient: JSFTPClient, blocker: Blocker) extends Ft
             super.close()
           }
       }
-      _ <- source.through(fs2.io.writeOutputStream(IO.pure(os), blocker))
+      _ <- source.through(fs2.io.writeOutputStream(CE.pure(os), blocker))
     } yield ()).compile.drain
 
-  def execute[T](f: JSFTPClient => T)(implicit cs: ContextShift[IO]): IO[T] =
-    blocker.delay[IO, T](f(unsafeClient))
+  def execute[T](f: JSFTPClient => T): F[T] =
+    blocker.delay[F, T](f(unsafeClient))
 }
 
 object SFtp {
 
-  def connect(settings: SecureFtpSettings)(implicit cs: ContextShift[IO]): Resource[IO, FtpClient[JSFTPClient]] =
+  def connect[F[_]](
+    settings: SecureFtpSettings
+  )(implicit CS: ContextShift[F], CE: ConcurrentEffect[F]): Resource[F, FtpClient[F, JSFTPClient]] =
     for {
-      ssh <- Resource.liftF(IO(new SSHClient(settings.sshConfig)))
+      ssh <- Resource.liftF(CE.delay(new SSHClient(settings.sshConfig)))
 
-      blocker <- Blocker[IO]
-      r <- Resource.make[IO, FtpClient[JSFTPClient]](IO.delay {
+      blocker <- Blocker[F]
+      r <- Resource.make[F, FtpClient[F, JSFTPClient]](CE.delay {
             import settings._
 
             if (!strictHostKeyChecking)
               ssh.addHostKeyVerifier(new PromiscuousVerifier)
             else
               knownHosts.map(new File(_)).foreach(ssh.loadKnownHosts)
+
+            ssh.setTimeout(settings.timeOut)
+            ssh.setConnectTimeout(settings.connectTimeOut)
 
             ssh.connect(host, port)
 
@@ -113,7 +121,7 @@ object SFtp {
 
             new SFtp(ssh.newSFTPClient(), blocker)
           })(client =>
-            client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) IO.delay(ssh.disconnect()) else IO.unit)
+            client.execute(_.close()).attempt.flatMap(_ => if (ssh.isConnected) CE.delay(ssh.disconnect()) else CE.unit)
           )
     } yield r
 
