@@ -72,6 +72,9 @@ connect[IO](settings).use(
 Since all (s)ftp command are IO bound task , it will be executed on specific blocking executionContext
 More information here https://typelevel.org/cats-effect/datatypes/contextshift.html
 
+
+Create a `FtpClient[F[_], +A]` by using `connect()` it is required to provide an implicit `ContextShift[F]`
+
 Here how to provide an ContextShift
 
 * you can use the default one provided by `IOApp`
@@ -80,7 +83,8 @@ import fs2.ftp._
 import fs2.ftp.FtpSettings._
 
 object MyApp extends cats.effect.IOApp {
-  //by default an implicit ContextShit is available as an implicit variable   
+  //by default an implicit ContextShift[IO] is available as an implicit variable   
+  //F[_] Effect will be set as cats.effect.IO
 }
 ```
 
@@ -107,6 +111,13 @@ connect[IO](settings).use(
   _.execute(_.version())
 )     
  ```
+
+### Support any effect (IO, Monix, ZIO)
+
+Since the library is following the paradigm polymorph `F[_]` (aka tagless final) we can create provide any
+effect implementation as long your favourite library provide the type classes needed define by `cats-effect`
+
+The library is by default bringing the dependency `cats-effect`
 
 ## How to release
 
