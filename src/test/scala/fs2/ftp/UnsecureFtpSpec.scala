@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.io.FileNotFoundException
 import java.nio.file.{ Files, Paths }
@@ -7,9 +7,7 @@ import java.util.concurrent.Executors
 import cats.effect.{ Blocker, ContextShift, IO, Resource }
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import ray.fs2.ftp.Ftp._
-import ray.fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
-
+import FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
 import scala.concurrent.ExecutionContext
 import scala.io.Source
 
@@ -230,4 +228,14 @@ trait BaseFtpTest extends AnyWordSpec with Matchers {
       case Left(_) =>
     }
   }
+}
+
+class UnsecureFtpSslTest extends BaseFtpTest {
+
+  override val settings: UnsecureFtpSettings =
+    UnsecureFtpSettings.ssl("127.0.0.1", 2121, FtpCredentials("username", "userpass"))
+}
+
+class UnsecureFtpTest extends BaseFtpTest {
+  override val settings = UnsecureFtpSettings("127.0.0.1", port = 2121, FtpCredentials("username", "userpass"))
 }

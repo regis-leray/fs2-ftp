@@ -21,13 +21,13 @@ libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "<version>"
 
 ```scala
 import cats.effect.IO
-import ray.fs2.ftp.FtpClient._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp.UnsecureFtp._
+import fs2.ftp.FtpSettings._
 
 // FTP
 val settings = UnsecureFtpSettings("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 // FTP-SSL 
-val settings = UnsecureFtpSettings.secure("127.0.0.1", 21, FtpCredentials("foo", "bar"))
+val settings = UnsecureFtpSettings.ssl("127.0.0.1", 21, FtpCredentials("foo", "bar"))
 
 connect[IO](settings).use{
   _.ls("/").compile.toList
@@ -38,8 +38,8 @@ connect[IO](settings).use{
 
 #### Password authentication
 ```scala
-import ray.fs2.ftp.FtpClient._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp.SecureFtp._
+import fs2.ftp.FtpSettings._
 import cats.effect.IO
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
@@ -51,8 +51,8 @@ connect[IO](settings).use(
 
 #### private key authentication
 ```scala
-import ray.fs2.ftp.FtpClient._
-import ray.fs2.ftp.FtpSettings._
+import fs2.ftp.SecureFtp._
+import fs2.ftp.FtpSettings._
 import java.nio.file.Paths._
 import cats.effect.IO
 
@@ -69,19 +69,33 @@ connect[IO](settings).use(
 
 ## Required ContextShift
 
-All function required an implicit ContextShit[IO].
-
 Since all (s)ftp command are IO bound task , it will be executed on specific blocking executionContext
 More information here https://typelevel.org/cats-effect/datatypes/contextshift.html
 
 
+Create a `FtpClient[F[_], +A]` by using `connect()` it is required to provide an implicit `ContextShift[F]`
 
 Here how to provide an ContextShift
 
 * you can use the default one provided by `IOApp`
 ```scala
+import cats.effect.{ExitCode, IO}
+import fs2.ftp._
+import fs2.ftp.FtpSettings._
+
 object MyApp extends cats.effect.IOApp {
-  //by default an implicit ContextShit is available as an implicit variable 
+  //by default an implicit ContextShift[IO] is available as an implicit variable   
+  //F[_] Effect will be set as cats.effect.IO
+  
+  val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+  
+  //print all files/directories
+  def run(args: List[String]): IO[ExitCode] ={
+    connect(settings).use(_.ls("/mypath")
+      .evalTap(r => IO(println(r)))
+      .compile.drain)
+      .redeem(_ => ExitCode.Error, _ => ExitCode.Success)          
+  }
 }
 ```
 
@@ -94,14 +108,13 @@ implicit val blockingIO = ExecutionContext.fromExecutor(Executors.newCachedThrea
 implicit val cs: ContextShift[IO] = IO.contextShift(blockingIO)
 ```
 
-
-
 ## Support any commands ?
 The underlying client is safely exposed and you have access to all possible ftp commands
 
 ```scala
-import ray.fs2.ftp.FtpClient._
-import ray.fs2.ftp.FtpSettings._
+import cats.effect.IO
+import fs2.ftp.SecureFtp._
+import fs2.ftp.FtpSettings._
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
 
@@ -109,6 +122,62 @@ connect[IO](settings).use(
   _.execute(_.version())
 )     
  ```
+
+## Support any effect (IO, Monix, ZIO)
+
+Since the library is following the paradigm polymorph `F[_]` (aka tagless final) you can use any
+effect implementation as long your favourite library provide the type classes needed define by `cats-effect`
+
+The library is by default bringing the dependency `cats-effect`
+
+
+### exemple for monix
+
+You will need to use add in build.sbt [monix-eval](https://github.com/monix/monix)
+
+```
+libraryDependencies += "io.monix" %% "monix-eval" % "3.2.1"
+```
+
+```scala
+import fs2.ftp.FtpSettings._
+import fs2.ftp._
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
+import Task.contextShift
+
+val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+
+val _: Task[List[FtpResource]] = connect(settings).use {
+  _.ls("/").compile.toList
+}
+```
+
+### exemple for zio
+
+You will need to use add in build.sbt [zio-cats-interop](https://github.com/zio/interop-cats)
+
+```
+libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.1.3.0-RC15"
+```
+
+```scala
+import fs2.ftp.FtpSettings._
+import zio.interop.catz._
+import zio.ZIO
+
+val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+
+ZIO.runtime.map { implicit r: zio.Runtime[Any] =>
+  implicit val CE: ConcurrentEffect[zio.Task] = implicitly
+  implicit val CS: ContextShift[zio.Task] = implicitly
+
+  connect(settings).use {
+    _.ls("/").compile.toList
+  }
+}
+```
+
 
 ## How to release
 

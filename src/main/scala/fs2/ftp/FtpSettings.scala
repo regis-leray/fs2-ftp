@@ -1,4 +1,4 @@
-package ray.fs2.ftp
+package fs2.ftp
 
 import java.net.Proxy
 import java.nio.file.Path
@@ -91,7 +91,7 @@ object FtpSettings {
     binary: Boolean,
     passiveMode: Boolean,
     proxy: Option[Proxy],
-    secure: Boolean,
+    ssl: Boolean,
     timeOut: Int,
     connectTimeOut: Int
   ) extends FtpSettings[JFTPClient]
@@ -101,7 +101,7 @@ object FtpSettings {
     def apply(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
       new UnsecureFtpSettings(host, port, creds, true, true, None, false, 0, 0)
 
-    def secure(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
+    def ssl(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
       new UnsecureFtpSettings(host, port, creds, true, true, None, true, 0, 0)
   }
 
