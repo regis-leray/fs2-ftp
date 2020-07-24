@@ -125,10 +125,9 @@ connect[IO](settings).use(
 
 ## Support any effect (IO, Monix, ZIO)
 
-Since the library support polymorphic in the effect type `F[_]` (as long as it is compatible with cats-effect typeclasses),  
-and thus fs2-ftp can be used with other effect libraries, such as Monix / ZIO.`
+Since the library support polymorphic in the effect type `F[_]` (as long as it is compatible with cats-effect typeclasses), fs2-ftp can be used with other effect libraries such as Monix / ZIO.
 
-The library is by default bringing the dependency `cats-effect`
+The library is by default bringing with `cats-effect` dependency as the default effect system implementation.
 
 ### exemple for monix
 
