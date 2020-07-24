@@ -125,11 +125,10 @@ connect[IO](settings).use(
 
 ## Support any effect (IO, Monix, ZIO)
 
-Since the library is following the paradigm polymorph `F[_]` (aka tagless final) you can use any
-effect implementation as long your favourite library provide the type classes needed define by `cats-effect`
+Since the library support polymorphic in the effect type `F[_]` (as long as it is compatible with cats-effect typeclasses),  
+and thus fs2-ftp can be used with other effect libraries, such as Monix / ZIO.`
 
 The library is by default bringing the dependency `cats-effect`
-
 
 ### exemple for monix
 
@@ -148,7 +147,7 @@ import Task.contextShift
 
 val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
 
-val _: Task[List[FtpResource]] = connect(settings).use {
+val _: monix.Task[List[FtpResource]] = connect(settings).use {
   _.ls("/").compile.toList
 }
 ```
@@ -172,7 +171,7 @@ ZIO.runtime.map { implicit r: zio.Runtime[Any] =>
   implicit val CE: ConcurrentEffect[zio.Task] = implicitly
   implicit val CS: ContextShift[zio.Task] = implicitly
 
-  connect(settings).use {
+  val _: zio.Task[List[FtpResource]] = connect(settings).use {
     _.ls("/").compile.toList
   }
 }

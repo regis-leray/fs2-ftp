@@ -200,9 +200,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers {
     val path                       = home.resolve("hello-world.txt")
 
     connect(settings)
-      .use(
-        _.upload("/hello-world.txt", data)
-      )
+      .use(c => data.through(c.upload("/hello-world.txt")).compile.drain)
       .attempt
       .unsafeRunSync() should matchPattern {
       case Right(_) =>
@@ -220,9 +218,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers {
     val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
 
     connect(settings)
-      .use(
-        _.upload("/dont-exist/hello-world.txt", data)
-      )
+      .use(c => data.through(c.upload("/dont-exist/hello-world.txt")).compile.drain)
       .attempt
       .unsafeRunSync() should matchPattern {
       case Left(_) =>
