@@ -228,9 +228,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
       val path                       = home.resolve("dir1/hello-world.txt")
 
       connect(settings)
-        .use(
-          _.upload("/dir1/hello-world.txt", data)
-        )
+        .use(c => data.through(c.upload("/dir1/hello-world.txt")).compile.drain)
         .attempt
         .unsafeRunSync() should matchPattern {
         case Right(_) =>
@@ -248,9 +246,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
       val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
 
       connect(settings)
-        .use(
-          _.upload("/dont-exist/hello-world.txt", data)
-        )
+        .use(c => data.through(c.upload("/dont-exist/hello-world.txt")).compile.drain)
         .attempt
         .unsafeRunSync() should matchPattern {
         case Left(ex: SFTPException) if ex.getStatusCode == StatusCode.NO_SUCH_FILE =>

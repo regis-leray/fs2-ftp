@@ -7,8 +7,8 @@ import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.monadError._
-import fs2.Stream
-import org.apache.commons.net.ftp.{ FTP, FTPSClient => JFTPSClient, FTPClient => JFTPClient }
+import fs2.{ Pipe, Stream }
+import org.apache.commons.net.ftp.{ FTP, FTPClient => JFTPClient, FTPSClient => JFTPSClient }
 import FtpSettings.UnsecureFtpSettings
 
 final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](
@@ -61,15 +61,15 @@ final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](
           Stream(FtpResource(f, Some(path)))
       }
 
-  def upload(path: String, source: fs2.Stream[F, Byte]): F[Unit] =
-    source
-      .through(fs2.io.toInputStream[F])
-      .evalMap(is =>
-        execute(_.storeFile(path, is))
-          .ensure(InvalidPathError(s"Path is invalid. Cannot upload data to : $path"))(identity)
-      )
-      .compile
-      .drain
+  def upload(path: String): Pipe[F, Byte, Unit] =
+    source =>
+      source
+        .through(fs2.io.toInputStream[F])
+        .evalMap(is =>
+          execute(_.storeFile(path, is))
+            .ensure(InvalidPathError(s"Path is invalid. Cannot upload data to : $path"))(identity)
+            .void
+        )
 
   def execute[T](f: JFTPClient => T): F[T] =
     blocker.delay[F, T](f(unsafeClient))
@@ -112,7 +112,7 @@ object UnsecureFtp {
           } { client =>
             for {
               connected <- client.execute(_.isConnected)
-              _ <- if (!connected) Sync[F].pure(())
+              _ <- if (!connected) Sync[F].unit
                   else
                     client
                       .execute(_.logout)

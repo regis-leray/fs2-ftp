@@ -5,7 +5,7 @@ import java.io._
 import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource, Sync }
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
-import fs2.Stream
+import fs2.{ Pipe, Stream }
 import fs2.Stream._
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.{ OpenMode, Response, SFTPException, SFTPClient => JSFTPClient }
@@ -68,24 +68,22 @@ final private class SecureFtp[F[_]: ConcurrentEffect: ContextShift](unsafeClient
   def mkdir(path: String): F[Unit] =
     execute(_.mkdir(path))
 
-  def upload(
-    path: String,
-    source: fs2.Stream[F, Byte]
-  ): F[Unit] =
-    (for {
-      remoteFile <- Stream.eval(execute(_.open(path, java.util.EnumSet.of(OpenMode.WRITE, OpenMode.CREAT))))
+  def upload(path: String): Pipe[F, Byte, Unit] =
+    source =>
+      (for {
+        remoteFile <- Stream.eval(execute(_.open(path, java.util.EnumSet.of(OpenMode.WRITE, OpenMode.CREAT))))
 
-      os: java.io.OutputStream = new remoteFile.RemoteFileOutputStream() {
+        os: java.io.OutputStream = new remoteFile.RemoteFileOutputStream() {
 
-        override def close(): Unit =
-          try {
-            remoteFile.close()
-          } finally {
-            super.close()
-          }
-      }
-      _ <- source.through(fs2.io.writeOutputStream(Sync[F].pure(os), blocker))
-    } yield ()).compile.drain
+          override def close(): Unit =
+            try {
+              remoteFile.close()
+            } finally {
+              super.close()
+            }
+        }
+        _ <- source.through(fs2.io.writeOutputStream(Sync[F].pure(os), blocker))
+      } yield ())
 
   def execute[T](f: JSFTPClient => T): F[T] =
     blocker.delay[F, T](f(unsafeClient))

@@ -1,6 +1,6 @@
 package fs2.ftp
 
-import fs2.Stream
+import fs2.{ Pipe, Stream }
 
 /**
  * Base trait of FtpClient which expose only safe methods
@@ -64,7 +64,7 @@ trait FtpClient[F[_], +A] {
    * If operation failed it will emit an IOException in the error channel
    * use `recover/recoverWith` to catch it
    */
-  def upload(path: String, source: fs2.Stream[F, Byte]): F[Unit]
+  def upload(path: String): Pipe[F, Byte, Unit]
 
   /**
    * Execute safely any operation supported by the underlying ftp client `A`
