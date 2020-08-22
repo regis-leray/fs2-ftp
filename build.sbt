@@ -39,8 +39,8 @@ lazy val `fs2-ftp` = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "co.fs2"                   %% "fs2-core"                % "2.4.3",
-      "co.fs2"                   %% "fs2-io"                  % "2.4.3",
+      "co.fs2"                   %% "fs2-core"                % "2.4.4",
+      "co.fs2"                   %% "fs2-io"                  % "2.4.4",
       "org.scala-lang.modules"   %% "scala-collection-compat" % "2.1.6",
       "com.hierynomus"           % "sshj"                     % "0.30.0",
       "commons-net"              % "commons-net"              % "3.6",
