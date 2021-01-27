@@ -41,7 +41,7 @@ lazy val `fs2-ftp` = project
     libraryDependencies ++= Seq(
       "co.fs2"                   %% "fs2-core"                % "2.4.6",
       "co.fs2"                   %% "fs2-io"                  % "2.4.6",
-      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.3.2",
+      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.4.0",
       "com.hierynomus"           % "sshj"                     % "0.30.0",
       "commons-net"              % "commons-net"              % "3.7.2",
       "org.apache.logging.log4j" % "log4j-api"                % "2.13.0" % Test,
