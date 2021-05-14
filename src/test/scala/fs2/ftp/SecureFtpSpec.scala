@@ -1,19 +1,19 @@
 package fs2.ftp
 
-import java.nio.file.{ Files, Paths }
-
-import cats.effect.{ Blocker, ContextShift, IO, Resource }
+import cats.effect.unsafe.IORuntime
+import cats.effect.{ IO, Resource }
+import fs2.ftp.FtpSettings.{ FtpCredentials, KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings }
+import fs2.io.file.Files
 import net.schmizz.sshj.sftp.Response.StatusCode
-import net.schmizz.sshj.sftp.SFTPException
+import net.schmizz.sshj.sftp.{ SFTPException, SFTPClient => JSFTPClient }
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import fs2.ftp.FtpSettings.{ FtpCredentials, KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings }
-import scala.concurrent.ExecutionContext
+
+import java.nio.file.{ Paths, Files => JFiles }
 import scala.io.Source
 
 class SecureFtpSpec extends AnyWordSpec with Matchers {
-  implicit private val ec: ExecutionContext = ExecutionContext.global
-  implicit private val cs: ContextShift[IO] = IO.contextShift(ec)
+  implicit val runtime: IORuntime = IORuntime.global
 
   private val settings = SecureFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
 
@@ -21,7 +21,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
 
   "SFtp" should {
     "connect with invalid credentials" in {
-      connect(settings.copy(credentials = FtpCredentials("invalid", "invalid")))
+      connect[IO, JSFTPClient](settings.copy(credentials = FtpCredentials("invalid", "invalid")))
         .use(_ => IO.unit)
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -30,7 +30,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "connect with valid credentials" in {
-      connect(settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
+      connect[IO, JSFTPClient](settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
     }
@@ -40,7 +40,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
 
       val settings = SecureFtpSettings("127.0.0.1", 3333, FtpCredentials("fooz", ""), RawKeySftpIdentity(privatekey))
 
-      connect(settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
+      connect[IO, JSFTPClient](settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
     }
@@ -51,13 +51,13 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
       val settings =
         SecureFtpSettings("127.0.0.1", 3333, FtpCredentials("fooz", ""), KeyFileSftpIdentity(privatekey, None))
 
-      connect(settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
+      connect[IO, JSFTPClient](settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
       }
     }
 
     "lsDescendant" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.lsDescendant("/").compile.toList
         )
@@ -66,7 +66,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "lsDescendant with wrong directory" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.lsDescendant("wrong-directory").compile.toList
         )
@@ -74,7 +74,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "ls" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.ls("/").compile.toList
         )
@@ -83,7 +83,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "ls with wrong directory" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.ls("wrong-directory").compile.toList
         )
@@ -91,7 +91,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "stat file" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.stat("/dir1/users.csv")
         )
@@ -100,7 +100,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "stat file does not exist" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.stat("/wrong-path.xml")
         )
@@ -109,12 +109,12 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "readFile" in {
-      val tmp = Files.createTempFile("notes.txt", ".tmp")
+      val tmp = JFiles.createTempFile("notes.txt", ".tmp")
 
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.readFile("/notes.txt")
-            .through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
+            .through(Files[IO].writeAll(tmp))
             .compile
             .drain
         )
@@ -129,12 +129,12 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "readFile does not exist" in {
-      val tmp = Files.createTempFile("notes.txt", ".tmp")
+      val tmp = JFiles.createTempFile("notes.txt", ".tmp")
 
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use {
           _.readFile("/no-file.xml")
-            .through(fs2.io.file.writeAll(tmp, Blocker.liftExecutionContext(ec)))
+            .through(Files[IO].writeAll(tmp))
             .compile
             .drain
         }
@@ -145,7 +145,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "mkdirs directory" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.mkdir("/dir1/new-dir")
         )
@@ -154,11 +154,11 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
         case Right(_) =>
       }
 
-      Files.delete(home.resolve("dir1/new-dir"))
+      JFiles.delete(home.resolve("dir1/new-dir"))
     }
 
     "mkdirs fail when invalid path" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.mkdir("/dir1/users.csv")
         )
@@ -170,9 +170,9 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
 
     "rm valid path" in {
       val path = home.resolve("dir1/to-delete.txt")
-      Files.createFile(path)
+      JFiles.createFile(path)
 
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.rm("/dir1/to-delete.txt")
         )
@@ -181,11 +181,11 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
         case Right(_) =>
       }
 
-      Files.exists(path) shouldBe false
+      JFiles.exists(path) shouldBe false
     }
 
     "rm fail when invalid path" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.rm("upload/dont-exist")
         )
@@ -198,9 +198,9 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     "rmdir directory" in {
       val path = home.resolve("dir1/dir-to-delete")
 
-      Files.createDirectory(path)
+      JFiles.createDirectory(path)
 
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.rmdir("/dir1/dir-to-delete")
         )
@@ -209,11 +209,11 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
         case Right(_) =>
       }
 
-      Files.exists(path) shouldBe false
+      JFiles.exists(path) shouldBe false
     }
 
     "rmdir fail invalid directory" in {
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(
           _.rmdir("/dont-exist")
         )
@@ -227,7 +227,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
       val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
       val path                       = home.resolve("dir1/hello-world.txt")
 
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(c => data.through(c.upload("/dir1/hello-world.txt")).compile.drain)
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -239,13 +239,13 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
         .use(s => IO(s.mkString))
         .unsafeRunSync() shouldBe "Hello F World"
 
-      Files.delete(path)
+      JFiles.delete(path)
     }
 
     "upload fail when path is invalid" in {
       val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
 
-      connect(settings)
+      connect[IO, JSFTPClient](settings)
         .use(c => data.through(c.upload("/dont-exist/hello-world.txt")).compile.drain)
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -254,7 +254,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     }
 
     "connect and disconnect multiple times in a row" in {
-      val ls = connect(settings)
+      val ls = connect[IO, JSFTPClient](settings)
         .use(
           _.ls("/").compile.toList
         )
