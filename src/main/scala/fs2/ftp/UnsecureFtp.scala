@@ -1,8 +1,7 @@
 package fs2.ftp
 
 import java.io.{ FileNotFoundException, InputStream }
-
-import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource, Sync }
+import cats.effect.{ Async, Resource, Sync }
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
@@ -11,9 +10,8 @@ import fs2.{ Pipe, Stream }
 import org.apache.commons.net.ftp.{ FTP, FTPClient => JFTPClient, FTPSClient => JFTPSClient }
 import FtpSettings.UnsecureFtpSettings
 
-final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](
-  unsafeClient: UnsecureFtp.Client,
-  blocker: Blocker
+final private class UnsecureFtp[F[_]: Async](
+  unsafeClient: UnsecureFtp.Client
 ) extends FtpClient[F, JFTPClient] {
 
   def stat(path: String): F[Option[FtpResource]] =
@@ -27,7 +25,7 @@ final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](
         )
       )
 
-    fs2.io.readInputStream(is, chunkSize, blocker)
+    fs2.io.readInputStream(is, chunkSize)
   }
 
   def rm(path: String): F[Unit] =
@@ -72,19 +70,17 @@ final private class UnsecureFtp[F[_]: ConcurrentEffect: ContextShift](
         )
 
   def execute[T](f: JFTPClient => T): F[T] =
-    blocker.delay[F, T](f(unsafeClient))
+    Sync[F].blocking(f(unsafeClient))
 }
 
 object UnsecureFtp {
 
   type Client = JFTPClient
 
-  def connect[F[_]: ContextShift: ConcurrentEffect](
+  def connect[F[_]: Async](
     settings: UnsecureFtpSettings
   ): Resource[F, FtpClient[F, UnsecureFtp.Client]] =
     for {
-      blocker <- Blocker[F]
-
       r <- Resource.make[F, FtpClient[F, JFTPClient]] {
             Sync[F]
               .delay {
@@ -105,7 +101,7 @@ object UnsecureFtp {
                   ftpClient.enterLocalPassiveMode()
                 }
 
-                success -> new UnsecureFtp[F](ftpClient, blocker)
+                success -> new UnsecureFtp[F](ftpClient)
               }
               .ensure(ConnectionError(s"Fail to connect to server ${settings.host}:${settings.port}"))(_._1)
               .map(_._2)
@@ -120,7 +116,5 @@ object UnsecureFtp {
                       .flatMap(_ => client.execute(_.disconnect))
             } yield ()
           }
-
     } yield r
-
 }

@@ -1,8 +1,7 @@
 package fs2.ftp
 
 import java.io._
-
-import cats.effect.{ Blocker, ConcurrentEffect, ContextShift, Resource, Sync }
+import cats.effect.{ Async, Resource, Sync }
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import fs2.{ Pipe, Stream }
@@ -15,8 +14,7 @@ import fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpS
 
 import scala.jdk.CollectionConverters._
 
-final private class SecureFtp[F[_]: ConcurrentEffect: ContextShift](unsafeClient: SecureFtp.Client, blocker: Blocker)
-    extends FtpClient[F, JSFTPClient] {
+final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client) extends FtpClient[F, JSFTPClient] {
 
   def ls(path: String): fs2.Stream[F, FtpResource] =
     fs2.Stream
@@ -56,7 +54,7 @@ final private class SecureFtp[F[_]: ConcurrentEffect: ContextShift](unsafeClient
           }
       }
 
-      input <- fs2.io.readInputStream(Sync[F].pure(is), chunkSize, blocker)
+      input <- fs2.io.readInputStream(Sync[F].pure(is), chunkSize)
     } yield input
 
   def rm(path: String): F[Unit] =
@@ -82,24 +80,22 @@ final private class SecureFtp[F[_]: ConcurrentEffect: ContextShift](unsafeClient
               super.close()
             }
         }
-        _ <- source.through(fs2.io.writeOutputStream(Sync[F].pure(os), blocker))
+        _ <- source.through(fs2.io.writeOutputStream(Sync[F].pure(os)))
       } yield ())
 
   def execute[T](f: JSFTPClient => T): F[T] =
-    blocker.delay[F, T](f(unsafeClient))
+    Sync[F].blocking(f(unsafeClient))
 }
 
 object SecureFtp {
 
   type Client = JSFTPClient
 
-  def connect[F[_]: ContextShift: ConcurrentEffect](
+  def connect[F[_]: Async](
     settings: SecureFtpSettings
   ): Resource[F, FtpClient[F, SecureFtp.Client]] =
     for {
-      ssh <- Resource.liftF(Sync[F].delay(new SSHClient(settings.sshConfig)))
-
-      blocker <- Blocker[F]
+      ssh <- Resource.eval(Sync[F].delay(new SSHClient(settings.sshConfig)))
       r <- Resource.make[F, FtpClient[F, JSFTPClient]](Sync[F].delay {
             import settings._
 
@@ -118,7 +114,7 @@ object SecureFtp {
                 setIdentity(_, credentials.username)(ssh)
               )
 
-            new SecureFtp(ssh.newSFTPClient(), blocker)
+            new SecureFtp(ssh.newSFTPClient())
           })(client =>
             client
               .execute(_.close())
