@@ -134,7 +134,7 @@ The library is by default bringing with `cats-effect` dependency as the default 
 You will need to use add in build.sbt [monix-eval](https://github.com/monix/monix)
 
 ```
-libraryDependencies += "io.monix" %% "monix-eval" % "3.2.1"
+libraryDependencies += "io.monix" %% "monix-eval" % "<version>"
 ```
 
 ```scala
@@ -156,7 +156,7 @@ val _: monix.Task[List[FtpResource]] = connect(settings).use {
 You will need to use add in build.sbt [zio-cats-interop](https://github.com/zio/interop-cats)
 
 ```
-libraryDependencies += "dev.zio" %% "zio-interop-cats" % "2.1.3.0-RC15"
+libraryDependencies += "dev.zio" %% "zio-interop-cats" % "<version>"
 ```
 
 ```scala
