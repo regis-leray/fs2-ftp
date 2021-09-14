@@ -1,5 +1,5 @@
 lazy val scala213 = "2.13.5"
-lazy val scala212 = "2.12.11"
+lazy val scala212 = "2.12.15"
 
 lazy val `fs2-ftp` = project
   .in(file("."))

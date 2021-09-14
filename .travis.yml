@@ -41,11 +41,11 @@ jobs:
 
     - <<: *build-test
       jdk: openjdk11
-      scala: 2.12.11
+      scala: 2.12.15
 
     - <<: *build-test
       jdk: openjdk8
-      scala: 2.12.11
+      scala: 2.12.15
       script:
         - set -e
         - docker-compose up -d
