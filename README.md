@@ -197,7 +197,7 @@ uid           [ultimate] your name <you@example.com>
 sub   rsa4096 2018-08-22 [E]
 
 #send key to server
-$> gpg --keyserver hkp://ipv4.pool.sks-keyservers.net --send-keys $LONG_ID
+$> gpg --keyserver keyserver.ubuntu.com --send-keys $LONG_ID
 
 # declare in travis (settings) PGP_SECRET in base64 (with no return carriage), dont put "" around the value !
 gpg --armor --export-secret-keys $LONG_ID | base64 -w0 | pbcopy

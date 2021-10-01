@@ -1,18 +1,19 @@
 package fs2.ftp
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{ IO, Resource }
-import fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
+import cats.effect.{IO, Resource}
+import fs2.ftp.FtpSettings.{FtpCredentials, UnsecureFtpSettings}
 import fs2.io.file.Files
-import org.apache.commons.net.ftp.{ FTPClient => JFTPClient }
+import org.apache.commons.net.ftp.{FTPClient => JFTPClient}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.FileNotFoundException
-import java.nio.file.{ Paths, Files => JFiles }
+import java.nio.file.{Paths, Files => JFiles}
 import scala.io.Source
 
-trait BaseFtpTest extends AnyWordSpec with Matchers {
+trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   implicit val runtime: IORuntime = IORuntime.global
 
   val settings: UnsecureFtpSettings
@@ -170,6 +171,8 @@ trait BaseFtpTest extends AnyWordSpec with Matchers {
 
   "rm directory" in {
     val path = home.resolve("dir-to-delete")
+
+
     JFiles.createDirectory(path)
 
     connect[IO, JFTPClient](settings)
@@ -224,6 +227,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers {
       case Left(_) =>
     }
   }
+
 }
 
 class UnsecureFtpSslTest extends BaseFtpTest {
