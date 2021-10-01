@@ -14,7 +14,7 @@ import fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpS
 
 import scala.jdk.CollectionConverters._
 
-final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client) extends FtpClient[F, JSFTPClient] {
+final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client, maxUnconfirmedWrites: Int) extends FtpClient[F, JSFTPClient] {
 
   def ls(path: String): fs2.Stream[F, FtpResource] =
     fs2.Stream
@@ -71,7 +71,7 @@ final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client) exten
       (for {
         remoteFile <- Stream.eval(execute(_.open(path, java.util.EnumSet.of(OpenMode.WRITE, OpenMode.CREAT))))
 
-        os: java.io.OutputStream = new remoteFile.RemoteFileOutputStream() {
+        os: java.io.OutputStream = new remoteFile.RemoteFileOutputStream(0, maxUnconfirmedWrites) {
 
           override def close(): Unit =
             try {
@@ -114,7 +114,7 @@ object SecureFtp {
                 setIdentity(_, credentials.username)(ssh)
               )
 
-            new SecureFtp(ssh.newSFTPClient())
+            new SecureFtp(ssh.newSFTPClient(), settings.maxUnconfirmedWrites)
           })(client =>
             client
               .execute(_.close())

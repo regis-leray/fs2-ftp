@@ -52,7 +52,8 @@ object FtpSettings {
     knownHosts: Option[String],
     timeOut: Int,
     connectTimeOut: Int,
-    sshConfig: SshConfig
+    sshConfig: SshConfig,
+    maxUnconfirmedWrites: Int
   ) extends FtpSettings[JSFTPClient]
 
   object SecureFtpSettings {
@@ -67,7 +68,8 @@ object FtpSettings {
         knownHosts = None,
         0,
         0,
-        new DefaultSshConfig()
+        new DefaultSshConfig(),
+        0
       )
 
     def apply(host: String, port: Int, credentials: FtpCredentials, identity: SftpIdentity): SecureFtpSettings =
@@ -80,7 +82,8 @@ object FtpSettings {
         knownHosts = None,
         0,
         0,
-        new DefaultSshConfig()
+        new DefaultSshConfig(),
+        0
       )
   }
 
