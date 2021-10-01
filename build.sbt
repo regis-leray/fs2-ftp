@@ -10,10 +10,8 @@ ThisBuild / githubWorkflowJavaVersions := Seq(GraalVM11)
 //sbt-ci-release settings
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
   WorkflowStep.Run(List(
-    "ls -alRh ./ftp-home ",
     "chmod -R 777 ./ftp-home/",
     "docker-compose -f \"docker-compose.yml\" up -d --build",
-    "ls -alRh     ./ftp-home",
     "chmod -R 777 ./ftp-home/sftp/home/foo/dir1"
   ), name = Some("Start containers"))
 )
