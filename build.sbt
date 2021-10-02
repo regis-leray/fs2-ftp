@@ -1,6 +1,6 @@
 lazy val scala212 = "2.12.13"
 lazy val scala213 = "2.13.6"
-val GraalVM11 = "graalvm-ce-java11@20.3.0"
+val GraalVM11     = "graalvm-ce-java11@20.3.0"
 
 inThisBuild(
   List(
@@ -10,7 +10,7 @@ inThisBuild(
     developers := List(
       Developer("regis_leray", "Regis Leray", "regis.leray at gmail dot com", url("https://github.com/regis-leray"))
     ),
-    licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
+    licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
   )
 )
 ThisBuild / scalaVersion := scala213
@@ -19,11 +19,14 @@ ThisBuild / githubWorkflowJavaVersions := Seq(GraalVM11)
 ThisBuild / versionScheme := Some("early-semver")
 
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
-  WorkflowStep.Run(List(
-    "chmod -R 777 ./ftp-home/",
-    "docker-compose -f \"docker-compose.yml\" up -d --build",
-    "chmod -R 777 ./ftp-home/sftp/home/foo/dir1"
-  ), name = Some("Start containers"))
+  WorkflowStep.Run(
+    List(
+      "chmod -R 777 ./ftp-home/",
+      "docker-compose -f \"docker-compose.yml\" up -d --build",
+      "chmod -R 777 ./ftp-home/sftp/home/foo/dir1"
+    ),
+    name = Some("Start containers")
+  )
 )
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("check", "test"))
@@ -42,10 +45,7 @@ ThisBuild / githubWorkflowEnv ++= List(
   "PGP_SECRET",
   "SONATYPE_PASSWORD",
   "SONATYPE_USERNAME"
-).map { envKey =>
-  envKey -> s"$${{ secrets.$envKey }}"
-}.toMap
-
+).map(envKey => envKey -> s"$${{ secrets.$envKey }}").toMap
 
 lazy val `fs2-ftp` = project
   .in(file("."))
@@ -53,7 +53,6 @@ lazy val `fs2-ftp` = project
     name := "fs2-ftp",
     Test / fork := true,
     Test / parallelExecution := false,
-
     publishMavenStyle := true,
     scalacOptions ++= Seq(
       "-encoding",
@@ -72,7 +71,7 @@ lazy val `fs2-ftp` = project
       .toList
       .flatten,
     //PgpKeys.pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toCharArray()),
-    publishTo := sonatypePublishToBundle.value,
+    publishTo := sonatypePublishToBundle.value
   )
   .settings(
     libraryDependencies ++= Seq(

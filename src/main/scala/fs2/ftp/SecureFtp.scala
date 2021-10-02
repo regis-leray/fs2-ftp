@@ -14,7 +14,8 @@ import fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpS
 
 import scala.jdk.CollectionConverters._
 
-final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client, maxUnconfirmedWrites: Int) extends FtpClient[F, JSFTPClient] {
+final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client, maxUnconfirmedWrites: Int)
+    extends FtpClient[F, JSFTPClient] {
 
   def ls(path: String): fs2.Stream[F, FtpResource] =
     fs2.Stream
