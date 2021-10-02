@@ -1,6 +1,8 @@
 lazy val scala212 = "2.12.13"
 lazy val scala213 = "2.13.6"
-val GraalVM11     = "graalvm-ce-java11@20.3.0"
+val fs2Version    = "3.1.3"
+
+val GraalVM11 = "graalvm-ce-java11@20.3.0"
 
 inThisBuild(
   List(
@@ -78,8 +80,8 @@ lazy val `fs2-ftp` = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "co.fs2"                   %% "fs2-core"                % "3.0.6",
-      "co.fs2"                   %% "fs2-io"                  % "3.0.6",
+      "co.fs2"                   %% "fs2-core"                % fs2Version,
+      "co.fs2"                   %% "fs2-io"                  % fs2Version,
       "org.scala-lang.modules"   %% "scala-collection-compat" % "2.5.0",
       "com.hierynomus"           % "sshj"                     % "0.31.0",
       "commons-net"              % "commons-net"              % "3.8.0",

@@ -91,7 +91,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
     connect[IO, JFTPClient](settings)
       .use(
-        _.readFile("/notes.txt").through(Files[IO].writeAll(tmp)).compile.drain
+        _.readFile("/notes.txt").through(Files[IO].writeAll(fs2.io.file.Path.fromNioPath(tmp))).compile.drain
       )
       .unsafeRunSync()
 
@@ -109,7 +109,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
     connect[IO, JFTPClient](settings)
       .use {
         _.readFile("/no-file.xml")
-          .through(Files[IO].writeAll(tmp))
+          .through(Files[IO].writeAll(fs2.io.file.Path.fromNioPath(tmp)))
           .compile
           .drain
       }
