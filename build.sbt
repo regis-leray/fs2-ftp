@@ -38,7 +38,10 @@ ThisBuild / githubWorkflowPublishPreamble := Seq(
 )
 
 ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
-ThisBuild / githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v")))
+ThisBuild / githubWorkflowPublishTargetBranches := Seq(
+  RefPredicate.StartsWith(Ref.Branch("master")),
+  RefPredicate.StartsWith(Ref.Tag("v"))
+)
 ThisBuild / githubWorkflowPublish := Seq(WorkflowStep.Sbt(List("ci-release")))
 ThisBuild / githubWorkflowEnv ++= List(
   "PGP_PASSPHRASE",
