@@ -1,16 +1,16 @@
 package fs2.ftp
 
 import cats.effect.unsafe.IORuntime
-import cats.effect.{IO, Resource}
-import fs2.ftp.FtpSettings.{FtpCredentials, UnsecureFtpSettings}
+import cats.effect.{ IO, Resource }
+import fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
 import fs2.io.file.Files
-import org.apache.commons.net.ftp.{FTPClient => JFTPClient}
+import org.apache.commons.net.ftp.{ FTPClient => JFTPClient }
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.FileNotFoundException
-import java.nio.file.{Paths, Files => JFiles}
+import java.nio.file.{ Paths, Files => JFiles }
 import scala.io.Source
 
 trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
@@ -91,7 +91,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
     connect[IO, JFTPClient](settings)
       .use(
-        _.readFile("/notes.txt").through(Files[IO].writeAll(tmp)).compile.drain
+        _.readFile("/notes.txt").through(Files[IO].writeAll(fs2.io.file.Path.fromNioPath(tmp))).compile.drain
       )
       .unsafeRunSync()
 
@@ -109,7 +109,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
     connect[IO, JFTPClient](settings)
       .use {
         _.readFile("/no-file.xml")
-          .through(Files[IO].writeAll(tmp))
+          .through(Files[IO].writeAll(fs2.io.file.Path.fromNioPath(tmp)))
           .compile
           .drain
       }
@@ -171,7 +171,6 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   "rm directory" in {
     val path = home.resolve("dir-to-delete")
-
 
     JFiles.createDirectory(path)
 

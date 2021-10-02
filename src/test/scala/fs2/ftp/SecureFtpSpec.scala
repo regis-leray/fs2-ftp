@@ -114,7 +114,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
       connect[IO, JSFTPClient](settings)
         .use(
           _.readFile("/notes.txt")
-            .through(Files[IO].writeAll(tmp))
+            .through(Files[IO].writeAll(fs2.io.file.Path.fromNioPath(tmp)))
             .compile
             .drain
         )
@@ -134,7 +134,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
       connect[IO, JSFTPClient](settings)
         .use {
           _.readFile("/no-file.xml")
-            .through(Files[IO].writeAll(tmp))
+            .through(Files[IO].writeAll(fs2.io.file.Path.fromNioPath(tmp)))
             .compile
             .drain
         }
