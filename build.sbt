@@ -1,6 +1,7 @@
 lazy val scala212 = "2.12.13"
 lazy val scala213 = "2.13.6"
-val fs2Version    = "3.1.3"
+
+val fs2Version = "3.1.3"
 
 val GraalVM11 = "graalvm-ce-java11@20.3.0"
 
@@ -74,9 +75,7 @@ lazy val `fs2-ftp` = project
         case Some((2, n)) if n < 13 => Seq("-Ypartial-unification")
       }
       .toList
-      .flatten,
-    //PgpKeys.pgpPassphrase := sys.env.get("PGP_PASSPHRASE").map(_.toCharArray()),
-    publishTo := sonatypePublishToBundle.value
+      .flatten
   )
   .settings(
     libraryDependencies ++= Seq(
