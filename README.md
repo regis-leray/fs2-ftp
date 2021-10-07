@@ -67,45 +67,34 @@ connect[IO](settings).use(
 )     
  ```
 
-## Required ContextShift
+## Required Runtime
 
-Since all (s)ftp command are IO bound task , it will be executed on specific blocking executionContext
-More information here https://typelevel.org/cats-effect/datatypes/contextshift.html
+Since all (s)ftp command are IO bound task , it needs to be executed on specific runtime.
+More information about IO and Cats Effect can be found here https://typelevel.org/cats-effect/docs/tutorial
 
 
-Create a `FtpClient[F[_], +A]` by using `connect()` it is required to provide an implicit `ContextShift[F]`
+The following example show how to create a `FtpClient[F[_], +A]` by using `connect()`
 
-Here how to provide an ContextShift
-
-* you can use the default one provided by `IOApp`
+* Here the runtime is provided by `IOApp.Simple`
 ```scala
-import cats.effect.{ExitCode, IO}
-import fs2.ftp._
+import cats.effect.{IO, IOApp}
 import fs2.ftp.FtpSettings._
 
-object MyApp extends cats.effect.IOApp {
-  //by default an implicit ContextShift[IO] is available as an implicit variable   
+object MyApp extends IOApp.Simple {
   //F[_] Effect will be set as cats.effect.IO
-  
-  val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
-  
+
+  private val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+
   //print all files/directories
-  def run(args: List[String]): IO[ExitCode] ={
-    connect(settings).use(_.ls("/mypath")
-      .evalTap(r => IO(println(r)))
-      .compile.drain)
-      .redeem(_ => ExitCode.Error, _ => ExitCode.Success)          
+  def run: IO[Unit] = {
+    connect[IO, SecureFtp.Client](settings).use {
+      _.ls("/mypath")
+        .evalTap(r => IO(println(r)))
+        .compile
+        .drain
+    }
   }
 }
-```
-
-Or create your own ContextShift
-```scala
-import cats.effect.IO
-import cats.effect.ContextShift
-
-implicit val blockingIO = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
-implicit val cs: ContextShift[IO] = IO.contextShift(blockingIO)
 ```
 
 ## Support any commands ?
