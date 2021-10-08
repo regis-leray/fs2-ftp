@@ -1,7 +1,7 @@
 lazy val scala212 = "2.12.13"
 lazy val scala213 = "2.13.6"
 
-val fs2Version = "3.1.4"
+val fs2Version = "3.1.5"
 
 val GraalVM11 = "graalvm-ce-java11@20.3.0"
 
