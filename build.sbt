@@ -1,5 +1,6 @@
 lazy val scala212 = "2.12.15"
 lazy val scala213 = "2.13.6"
+lazy val scala300 = "3.0.2"
 
 val fs2Version = "3.1.5"
 
@@ -16,8 +17,8 @@ inThisBuild(
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
   )
 )
-ThisBuild / scalaVersion := scala213
-ThisBuild / crossScalaVersions := List(scala213, scala212)
+ThisBuild / scalaVersion := scala300
+ThisBuild / crossScalaVersions := List(scala300, scala213, scala212)
 ThisBuild / githubWorkflowJavaVersions := Seq(GraalVM11)
 ThisBuild / versionScheme := Some("early-semver")
 
@@ -66,13 +67,13 @@ lazy val `fs2-ftp` = project
       "-unchecked",
       "-deprecation",
       "-feature",
-      "-Xlint",
       "-Xfatal-warnings",
       "-language:higherKinds",
       "-language:postfixOps"
     ) ++ PartialFunction
       .condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
-        case Some((2, n)) if n < 13 => Seq("-Ypartial-unification")
+        case Some((2, n)) if n < 13  => Seq("-Xlint", "-Ypartial-unification")
+        case Some((2, n)) if n >= 13 => Seq("-Xlint")
       }
       .toList
       .flatten
@@ -84,9 +85,9 @@ lazy val `fs2-ftp` = project
       "org.scala-lang.modules"   %% "scala-collection-compat" % "2.5.0",
       "com.hierynomus"           % "sshj"                     % "0.31.0",
       "commons-net"              % "commons-net"              % "3.8.0",
-      "org.apache.logging.log4j" % "log4j-api"                % "2.13.0" % Test,
-      "org.apache.logging.log4j" % "log4j-core"               % "2.13.0" % Test,
-      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.13.0" % Test,
+      "org.apache.logging.log4j" % "log4j-api"                % "2.14.1" % Test,
+      "org.apache.logging.log4j" % "log4j-core"               % "2.14.1" % Test,
+      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.14.1" % Test,
       "org.scalatest"            %% "scalatest"               % "3.2.10" % Test
     )
   )
