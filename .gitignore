@@ -19,3 +19,4 @@ project/metals.sbt
 .metals/
 .bloop/
 .bsp/
+/ftp-home/*
