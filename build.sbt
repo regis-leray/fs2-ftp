@@ -1,5 +1,5 @@
 lazy val scala212 = "2.12.15"
-lazy val scala213 = "2.13.6"
+lazy val scala213 = "2.13.7"
 lazy val scala300 = "3.1.0"
 
 val fs2Version = "3.2.2"
