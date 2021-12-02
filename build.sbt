@@ -4,8 +4,6 @@ lazy val scala300 = "3.1.0"
 
 val fs2Version = "3.2.4"
 
-val GraalVM11 = "graalvm-ce-java11@20.3.0"
-
 inThisBuild(
   List(
     organization := "com.github.regis-leray",
@@ -19,7 +17,7 @@ inThisBuild(
 )
 ThisBuild / scalaVersion := scala300
 ThisBuild / crossScalaVersions := List(scala300, scala213, scala212)
-ThisBuild / githubWorkflowJavaVersions := Seq(GraalVM11)
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.graalvm("20.3.1", "11"))
 ThisBuild / versionScheme := Some("early-semver")
 
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
