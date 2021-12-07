@@ -1,8 +1,8 @@
 lazy val scala212 = "2.12.15"
-lazy val scala213 = "2.13.6"
+lazy val scala213 = "2.13.7"
 lazy val scala300 = "3.1.0"
 
-val fs2Version = "3.2.2"
+val fs2Version = "3.2.3"
 
 val GraalVM11 = "graalvm-ce-java11@20.3.0"
 
@@ -82,7 +82,7 @@ lazy val `fs2-ftp` = project
     libraryDependencies ++= Seq(
       "co.fs2"                   %% "fs2-core"                % fs2Version,
       "co.fs2"                   %% "fs2-io"                  % fs2Version,
-      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.5.0",
+      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.6.0",
       "com.hierynomus"           % "sshj"                     % "0.32.0",
       "commons-net"              % "commons-net"              % "3.8.0",
       "org.apache.logging.log4j" % "log4j-api"                % "2.14.1" % Test,
