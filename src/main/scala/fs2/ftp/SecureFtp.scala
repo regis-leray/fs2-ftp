@@ -3,7 +3,6 @@ package fs2.ftp
 import java.io._
 import cats.effect.{ Async, Resource, Sync }
 import cats.syntax.applicativeError._
-import cats.syntax.flatMap._
 import fs2.{ Pipe, Stream }
 import fs2.Stream._
 import net.schmizz.sshj.SSHClient
@@ -37,6 +36,9 @@ final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client, maxUn
 
   def stat(path: String): F[Option[FtpResource]] =
     execute(client => Option(client.statExistence(path)).map(FtpResource(path, _)))
+
+  def execute[T](f: JSFTPClient => T): F[T] =
+    Sync[F].blocking(f(unsafeClient))
 
   def readFile(
     path: String,
@@ -83,9 +85,6 @@ final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client, maxUn
         }
         _ <- source.through(fs2.io.writeOutputStream(Sync[F].pure(os)))
       } yield ())
-
-  def execute[T](f: JSFTPClient => T): F[T] =
-    Sync[F].blocking(f(unsafeClient))
 }
 
 object SecureFtp {
@@ -96,7 +95,9 @@ object SecureFtp {
     settings: SecureFtpSettings
   ): Resource[F, FtpClient[F, SecureFtp.Client]] =
     for {
-      ssh <- Resource.eval(Sync[F].delay(new SSHClient(settings.sshConfig)))
+      ssh <- Resource.make(Sync[F].delay(new SSHClient(settings.sshConfig)))(ssh =>
+              Sync[F].delay(if (ssh.isConnected) ssh.disconnect() else {})
+            )
       r <- Resource.make[F, FtpClient[F, JSFTPClient]](Sync[F].delay {
             import settings._
 
@@ -116,12 +117,7 @@ object SecureFtp {
               )
 
             new SecureFtp(ssh.newSFTPClient(), settings.maxUnconfirmedWrites)
-          })(client =>
-            client
-              .execute(_.close())
-              .attempt
-              .flatMap(_ => if (ssh.isConnected) Sync[F].delay(ssh.disconnect()) else Sync[F].unit)
-          )
+          })(client => client.execute(_.close()))
     } yield r
 
   private[this] def setIdentity(identity: SftpIdentity, username: String)(ssh: SSHClient): Unit = {
