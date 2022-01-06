@@ -2,9 +2,7 @@ lazy val scala212 = "2.12.15"
 lazy val scala213 = "2.13.7"
 lazy val scala300 = "3.1.0"
 
-val fs2Version = "3.2.3"
-
-val GraalVM11 = "graalvm-ce-java11@20.3.0"
+val fs2Version = "3.2.4"
 
 inThisBuild(
   List(
@@ -19,7 +17,7 @@ inThisBuild(
 )
 ThisBuild / scalaVersion := scala300
 ThisBuild / crossScalaVersions := List(scala300, scala213, scala212)
-ThisBuild / githubWorkflowJavaVersions := Seq(GraalVM11)
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.graalvm("20.3.1", "11"))
 ThisBuild / versionScheme := Some("early-semver")
 
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
@@ -85,9 +83,9 @@ lazy val `fs2-ftp` = project
       "org.scala-lang.modules"   %% "scala-collection-compat" % "2.6.0",
       "com.hierynomus"           % "sshj"                     % "0.32.0",
       "commons-net"              % "commons-net"              % "3.8.0",
-      "org.apache.logging.log4j" % "log4j-api"                % "2.14.1" % Test,
-      "org.apache.logging.log4j" % "log4j-core"               % "2.14.1" % Test,
-      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.14.1" % Test,
+      "org.apache.logging.log4j" % "log4j-api"                % "2.17.1" % Test,
+      "org.apache.logging.log4j" % "log4j-core"               % "2.17.1" % Test,
+      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.17.1" % Test,
       "org.scalatest"            %% "scalatest"               % "3.2.10" % Test
     )
   )
