@@ -1,7 +1,7 @@
 package fs2.ftp
 
 import java.io._
-import cats.effect.{ Async, Resource, Sync }
+import cats.effect.{ Resource, Sync }
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import fs2.{ Pipe, Stream }
@@ -14,7 +14,7 @@ import fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpS
 
 import scala.jdk.CollectionConverters._
 
-final private class SecureFtp[F[_]: Async](unsafeClient: SecureFtp.Client, maxUnconfirmedWrites: Int)
+final private class SecureFtp[F[_]: Sync](unsafeClient: SecureFtp.Client, maxUnconfirmedWrites: Int)
     extends FtpClient[F, JSFTPClient] {
 
   def ls(path: String): fs2.Stream[F, FtpResource] =
@@ -92,7 +92,7 @@ object SecureFtp {
 
   type Client = JSFTPClient
 
-  def connect[F[_]: Async](
+  def connect[F[_]: Sync](
     settings: SecureFtpSettings
   ): Resource[F, FtpClient[F, SecureFtp.Client]] =
     for {

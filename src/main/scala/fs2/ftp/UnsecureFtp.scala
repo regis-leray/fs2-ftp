@@ -1,7 +1,7 @@
 package fs2.ftp
 
-import java.io.{ FileNotFoundException, InputStream }
-import cats.effect.{ Async, Resource, Sync }
+import java.io.{ FileNotFoundException, IOException, InputStream }
+import cats.effect.{ Async, Resource }
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
 import cats.syntax.functor._
@@ -9,6 +9,7 @@ import cats.syntax.monadError._
 import fs2.{ Pipe, Stream }
 import org.apache.commons.net.ftp.{ FTP, FTPClient => JFTPClient, FTPSClient => JFTPSClient }
 import FtpSettings.UnsecureFtpSettings
+import cats.effect.kernel.Sync
 
 final private class UnsecureFtp[F[_]: Async](
   unsafeClient: UnsecureFtp.Client
@@ -18,14 +19,22 @@ final private class UnsecureFtp[F[_]: Async](
     execute(client => Option(client.mlistFile(path)).map(FtpResource(_)))
 
   def readFile(path: String, chunkSize: Int = 2048): fs2.Stream[F, Byte] = {
-    val is = execute(client => Option(client.retrieveFileStream(path)))
-      .flatMap(
-        _.fold(Sync[F].raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(x =>
-          Sync[F].pure(x)
+    val r = Resource.make[F, InputStream] {
+      execute(client => Option(client.retrieveFileStream(path)))
+        .flatMap(
+          _.fold(Async[F].raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(Async[F].pure)
         )
-      )
+    } { _ =>
+      execute(_.completePendingCommand()).flatMap {
+        case false =>
+          Async[F].raiseError(
+            new IOException(s"Cannot finalize the file transfer and complete to read the entire file $path.")
+          )
+        case true => Async[F].pure(())
+      }
+    }
 
-    fs2.io.readInputStream(is, chunkSize)
+    fs2.Stream.resource(r).flatMap(is => fs2.io.readInputStream(Async[F].pure(is), chunkSize))
   }
 
   def rm(path: String): F[Unit] =
@@ -81,8 +90,8 @@ object UnsecureFtp {
     settings: UnsecureFtpSettings
   ): Resource[F, FtpClient[F, UnsecureFtp.Client]] =
     for {
-      r <- Resource.make[F, FtpClient[F, JFTPClient]] {
-            Sync[F]
+      r <- Resource.make[F, FtpClient[F, UnsecureFtp.Client]] {
+            Async[F]
               .delay {
                 val ftpClient = if (settings.ssl) new JFTPSClient() else new JFTPClient()
                 settings.proxy.foreach(ftpClient.setProxy)
@@ -108,7 +117,7 @@ object UnsecureFtp {
           } { client =>
             for {
               connected <- client.execute(_.isConnected)
-              _ <- if (!connected) Sync[F].unit
+              _ <- if (!connected) Async[F].unit
                   else
                     client
                       .execute(_.logout)
