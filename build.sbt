@@ -1,6 +1,6 @@
 lazy val scala212 = "2.12.15"
 lazy val scala213 = "2.13.7"
-lazy val scala300 = "3.1.0"
+lazy val scala310 = "3.1.0"
 
 val fs2Version = "3.2.4"
 
@@ -15,8 +15,8 @@ inThisBuild(
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))
   )
 )
-ThisBuild / scalaVersion := scala300
-ThisBuild / crossScalaVersions := List(scala300, scala213, scala212)
+ThisBuild / scalaVersion := scala310
+ThisBuild / crossScalaVersions := List(scala310, scala213, scala212)
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.graalvm("20.3.1", "11"))
 ThisBuild / versionScheme := Some("early-semver")
 
