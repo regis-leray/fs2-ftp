@@ -1,6 +1,6 @@
 package fs2.ftp
 
-import java.io.{ FileNotFoundException, IOException, InputStream }
+import java.io.{ FileNotFoundException, InputStream }
 import cats.effect.{ Async, Resource }
 import cats.syntax.applicativeError._
 import cats.syntax.flatMap._
@@ -19,22 +19,19 @@ final private class UnsecureFtp[F[_]: Async](
     execute(client => Option(client.mlistFile(path)).map(FtpResource(_)))
 
   def readFile(path: String, chunkSize: Int = 2048): fs2.Stream[F, Byte] = {
-    val r = Resource.make[F, InputStream] {
-      execute(client => Option(client.retrieveFileStream(path)))
-        .flatMap(
-          _.fold(Async[F].raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(Async[F].pure)
+    val terminate: F[Unit] = execute(_.completePendingCommand())
+      .flatMap(
+        Sync[F].raiseUnless(_)(
+          FileTransferIncompleteError(s"Cannot finalize the file transfer and completely read the entire file $path.")
         )
-    } { _ =>
-      execute(_.completePendingCommand()).flatMap {
-        case false =>
-          Async[F].raiseError(
-            new IOException(s"Cannot finalize the file transfer and complete to read the entire file $path.")
-          )
-        case true => Async[F].pure(())
-      }
-    }
+      )
 
-    fs2.Stream.resource(r).flatMap(is => fs2.io.readInputStream(Async[F].pure(is), chunkSize))
+    val is: F[InputStream] = execute(client => Option(client.retrieveFileStream(path)))
+      .flatMap(opt =>
+        opt.fold(Sync[F].raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(Sync[F].pure)
+      )
+
+    fs2.io.readInputStream(is, chunkSize) ++ (fs2.Stream.eval(terminate) >> fs2.Stream.empty)
   }
 
   def rm(path: String): F[Unit] =

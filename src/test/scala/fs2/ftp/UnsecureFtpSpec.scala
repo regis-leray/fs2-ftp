@@ -9,9 +9,10 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import java.io.FileNotFoundException
+import java.io.{ FileNotFoundException, InputStream }
 import java.nio.file.{ Paths, Files => JFiles }
 import scala.io.Source
+import scala.util.Random
 
 trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   implicit val runtime: IORuntime = IORuntime.global
@@ -237,4 +238,25 @@ class UnsecureFtpSslTest extends BaseFtpTest {
 
 class UnsecureFtpTest extends BaseFtpTest {
   override val settings = UnsecureFtpSettings("127.0.0.1", port = 2121, FtpCredentials("username", "userpass"))
+
+  "readFile fail when completePendingCommand is false" in {
+    val ftpClient = new UnsecureFtp[IO](new JFTPClient {
+      override def retrieveFileStream(remote: String): InputStream = {
+        val it = Random.alphanumeric.take(1000).map(_.toByte).iterator
+        () => if (it.hasNext) it.next().toInt else -1
+      }
+
+      override def completePendingCommand(): Boolean = false
+    })
+
+    ftpClient
+      .readFile("/a/b/c.txt")
+      .compile
+      .drain
+      .attempt
+      .unsafeRunSync() should matchPattern {
+      case Left(e @ FileTransferIncompleteError(_))
+          if e.message.startsWith("Cannot finalize the file transfer") && e.message.contains("/a/b/c.txt") =>
+    }
+  }
 }
