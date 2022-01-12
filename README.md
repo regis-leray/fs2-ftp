@@ -10,7 +10,7 @@ fs2 ftp client built on top of [Cats Effect](https://typelevel.org/cats-effect/)
 ## Setup
 
 ```
-// Supports scala versions (2.12 / 2.13 / 3.0)
+// Supports scala versions (2.12 / 2.13 / 3.1.x)
 
 libraryDependencies += "com.github.regis-leray" %% "fs2-ftp" % "<version>"
 ```
