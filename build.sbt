@@ -1,7 +1,6 @@
 lazy val scala212 = "2.12.15"
-
 lazy val scala213 = "2.13.8"
-lazy val scala310 = "3.1.1"
+lazy val scala310 = "3.1.2"
 
 val fs2Version = "3.2.7"
 
@@ -82,12 +81,12 @@ lazy val `fs2-ftp` = project
       "co.fs2"                   %% "fs2-core"                % fs2Version,
       "co.fs2"                   %% "fs2-io"                  % fs2Version,
       "org.scala-lang.modules"   %% "scala-collection-compat" % "2.7.0",
-      "com.hierynomus"           % "sshj"                     % "0.32.0",
+      "com.hierynomus"           % "sshj"                     % "0.33.0",
       "commons-net"              % "commons-net"              % "3.8.0",
-      "org.apache.logging.log4j" % "log4j-api"                % "2.17.1" % Test,
-      "org.apache.logging.log4j" % "log4j-core"               % "2.17.1" % Test,
-      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.17.1" % Test,
-      "org.scalatest"            %% "scalatest"               % "3.2.10" % Test
+      "org.apache.logging.log4j" % "log4j-api"                % "2.17.2" % Test,
+      "org.apache.logging.log4j" % "log4j-core"               % "2.17.2" % Test,
+      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.17.2" % Test,
+      "org.scalatest"            %% "scalatest"               % "3.2.12" % Test
     )
   )
 
