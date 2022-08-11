@@ -2,7 +2,7 @@ lazy val scala212 = "2.12.15"
 lazy val scala213 = "2.13.7"
 lazy val scala310 = "3.1.2"
 
-val fs2Version = "3.2.7"
+val fs2Version = "3.2.12"
 
 inThisBuild(
   List(
