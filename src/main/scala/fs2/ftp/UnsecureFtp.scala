@@ -103,6 +103,14 @@ object UnsecureFtp {
                 ftpClient.setConnectTimeout(settings.connectTimeOut)
                 ftpClient.setDefaultTimeout(settings.timeOut)
 
+                //https://enterprisedt.com/products/edtftpjssl/doc/manual/html/ftpscommands.html
+                ftpClient match {
+                  case client: JFTPSClient =>
+                    client.execPBSZ(0)
+                    client.execPROT("P")
+                  case _ => ()
+                }
+
                 if (settings.passiveMode) {
                   ftpClient.enterLocalPassiveMode()
                 }
