@@ -90,7 +90,7 @@ object UnsecureFtp {
       r <- Resource.make[F, FtpClient[F, UnsecureFtp.Client]] {
             Async[F]
               .delay {
-                val ftpClient = if (settings.ssl) new JFTPSClient() else new JFTPClient()
+                val ftpClient = settings.ssl.fold(new JFTPClient())(ssl =>  new JFTPSClient(ssl.isImplicit))
                 settings.proxy.foreach(ftpClient.setProxy)
                 ftpClient.connect(settings.host, settings.port)
 
@@ -105,6 +105,14 @@ object UnsecureFtp {
 
                 if (settings.passiveMode) {
                   ftpClient.enterLocalPassiveMode()
+                }
+
+                //https://enterprisedt.com/products/edtftpjssl/doc/manual/html/ftpscommands.html
+                (ftpClient, settings.ssl) match {
+                  case (c: JFTPSClient, Some(ssl)) =>
+                    c.execPBSZ(ssl.pbzs)
+                    c.execPROT(ssl.prot.s)
+                  case _ => ()
                 }
 
                 success -> new UnsecureFtp[F](ftpClient)
