@@ -90,7 +90,7 @@ object UnsecureFtp {
       r <- Resource.make[F, FtpClient[F, UnsecureFtp.Client]] {
             Async[F]
               .delay {
-                val ftpClient = settings.ssl.fold(new JFTPClient())(ssl =>  new JFTPSClient(ssl.isImplicit))
+                val ftpClient = settings.ssl.fold(new JFTPClient())(ssl => new JFTPSClient(ssl.isImplicit))
                 settings.proxy.foreach(ftpClient.setProxy)
                 ftpClient.connect(settings.host, settings.port)
 

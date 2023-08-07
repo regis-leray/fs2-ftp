@@ -28,32 +28,23 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         scala: [3.3.0, 2.13.11, 2.12.18]
-        java: [graal_20.3.1@17]
+        java: [graal_22.3.2@17]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Setup GraalVM (graal_20.3.1@17)
-        if: matrix.java == 'graal_20.3.1@17'
-        uses: DeLaGuardo/setup-graalvm@5.0
+      - name: Setup GraalVM (graal_22.3.2@17)
+        if: matrix.java == 'graal_22.3.2@17'
+        uses: graalvm/setup-graalvm@v1
         with:
-          graalvm: 20.3.1
-          java: java17
-
-      - name: Cache sbt
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-            ~/.coursier/cache/v1
-            ~/.cache/coursier/v1
-            ~/AppData/Local/Coursier/Cache/v1
-            ~/Library/Caches/Coursier/v1
-          key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+          version: 22.3.2
+          java-version: 17
+          components: native-image
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: sbt
 
       - name: Start containers
         run: |
@@ -62,15 +53,15 @@ jobs:
           chmod -R 777 ./ftp-home/sftp/home/foo/dir1
 
       - name: Check that workflows are up to date
-        run: sbt ++${{ matrix.scala }} githubWorkflowCheck
+        run: sbt '++ ${{ matrix.scala }}' githubWorkflowCheck
 
-      - run: sbt ++${{ matrix.scala }} check test
+      - run: sbt '++ ${{ matrix.scala }}' check test
 
       - name: Compress target directories
         run: tar cf targets.tar target project/target
 
       - name: Upload target directories
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: target-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: targets.tar
@@ -83,35 +74,26 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         scala: [3.3.0]
-        java: [graal_20.3.1@17]
+        java: [graal_22.3.2@17]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
-      - name: Setup GraalVM (graal_20.3.1@17)
-        if: matrix.java == 'graal_20.3.1@17'
-        uses: DeLaGuardo/setup-graalvm@5.0
+      - name: Setup GraalVM (graal_22.3.2@17)
+        if: matrix.java == 'graal_22.3.2@17'
+        uses: graalvm/setup-graalvm@v1
         with:
-          graalvm: 20.3.1
-          java: java17
-
-      - name: Cache sbt
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.sbt
-            ~/.ivy2/cache
-            ~/.coursier/cache/v1
-            ~/.cache/coursier/v1
-            ~/AppData/Local/Coursier/Cache/v1
-            ~/Library/Caches/Coursier/v1
-          key: ${{ runner.os }}-sbt-cache-v2-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+          version: 22.3.2
+          java-version: 17
+          components: native-image
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: sbt
 
       - name: Download target directories (3.3.0)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: target-${{ matrix.os }}-3.3.0-${{ matrix.java }}
 
@@ -121,7 +103,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (2.13.11)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: target-${{ matrix.os }}-2.13.11-${{ matrix.java }}
 
@@ -131,7 +113,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (2.12.18)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: target-${{ matrix.os }}-2.12.18-${{ matrix.java }}
 
@@ -142,4 +124,4 @@ jobs:
 
       - uses: olafurpg/setup-gpg@v3
 
-      - run: sbt ++${{ matrix.scala }} ci-release
+      - run: sbt ci-release
