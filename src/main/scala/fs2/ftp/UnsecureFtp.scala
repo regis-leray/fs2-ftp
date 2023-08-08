@@ -1,15 +1,12 @@
 package fs2.ftp
 
-import java.io.{ FileNotFoundException, InputStream }
-import cats.effect.{ Async, Resource }
-import cats.syntax.applicativeError._
-import cats.syntax.flatMap._
-import cats.syntax.functor._
-import cats.syntax.monadError._
+import cats.effect.{ Async, Resource, Sync }
+import cats.syntax.all._
+import fs2.ftp.FtpSettings.UnsecureFtpSettings
 import fs2.{ Pipe, Stream }
 import org.apache.commons.net.ftp.{ FTP, FTPClient => JFTPClient, FTPSClient => JFTPSClient }
-import FtpSettings.UnsecureFtpSettings
-import cats.effect.kernel.Sync
+
+import java.io.{ FileNotFoundException, InputStream }
 
 final private class UnsecureFtp[F[_]: Async](
   unsafeClient: UnsecureFtp.Client
@@ -83,6 +80,20 @@ object UnsecureFtp {
 
   type Client = JFTPClient
 
+  def apply[F[_]: Async](unsafeClient: Client): Resource[F, FtpClient[F, UnsecureFtp.Client]] =
+    Resource.make(Async[F].pure(new UnsecureFtp[F](unsafeClient))) { client =>
+      for {
+        connected <- client.execute(_.isConnected)
+        _ <- if (!connected) Async[F].unit
+            else
+              client
+                .execute(_.logout)
+                .attempt
+                .flatMap(_ => client.execute(_.disconnect))
+                .voidError
+      } yield ()
+    }
+
   def connect[F[_]: Async](
     settings: UnsecureFtpSettings
   ): Resource[F, FtpClient[F, UnsecureFtp.Client]] =
@@ -128,6 +139,7 @@ object UnsecureFtp {
                       .execute(_.logout)
                       .attempt
                       .flatMap(_ => client.execute(_.disconnect))
+                      .voidError
             } yield ()
           }
     } yield r
