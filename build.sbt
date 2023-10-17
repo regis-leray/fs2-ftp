@@ -81,7 +81,7 @@ lazy val `fs2-ftp` = project
       "co.fs2"                   %% "fs2-core"                % fs2Version,
       "co.fs2"                   %% "fs2-io"                  % fs2Version,
       "org.scala-lang.modules"   %% "scala-collection-compat" % "2.11.0",
-      "com.hierynomus"           % "sshj"                     % "0.35.0",
+      "com.hierynomus"           % "sshj"                     % "0.37.0",
       "commons-net"              % "commons-net"              % "3.9.0",
       "org.apache.logging.log4j" % "log4j-api"                % "2.20.0" % Test,
       "org.apache.logging.log4j" % "log4j-core"               % "2.20.0" % Test,
