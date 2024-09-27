@@ -24,7 +24,7 @@ ThisBuild / githubWorkflowBuildPreamble ++= Seq(
   WorkflowStep.Run(
     List(
       "chmod -R 777 ./ftp-home/",
-      "docker-compose -f \"docker-compose.yml\" up -d --build",
+      "docker compose -f \"docker-compose.yml\" up -d --build",
       "chmod -R 777 ./ftp-home/sftp/home/foo/dir1"
     ),
     name = Some("Start containers")
