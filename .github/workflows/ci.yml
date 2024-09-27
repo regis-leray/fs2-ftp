@@ -49,7 +49,7 @@ jobs:
       - name: Start containers
         run: |
           chmod -R 777 ./ftp-home/
-          docker-compose -f "docker-compose.yml" up -d --build
+          docker compose -f "docker-compose.yml" up -d --build
           chmod -R 777 ./ftp-home/sftp/home/foo/dir1
 
       - name: Check that workflows are up to date
