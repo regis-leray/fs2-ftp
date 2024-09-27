@@ -1,6 +1,6 @@
 lazy val scala212 = "2.12.18"
 lazy val scala213 = "2.13.11"
-lazy val scala330 = "3.3.0"
+lazy val scala330 = "3.3.3"
 
 val fs2Version = "3.11.0"
 
@@ -24,7 +24,7 @@ ThisBuild / githubWorkflowBuildPreamble ++= Seq(
   WorkflowStep.Run(
     List(
       "chmod -R 777 ./ftp-home/",
-      "docker-compose -f \"docker-compose.yml\" up -d --build",
+      "docker compose -f \"docker-compose.yml\" up -d --build",
       "chmod -R 777 ./ftp-home/sftp/home/foo/dir1"
     ),
     name = Some("Start containers")
