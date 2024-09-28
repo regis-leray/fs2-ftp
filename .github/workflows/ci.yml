@@ -32,7 +32,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -45,6 +45,9 @@ jobs:
           components: native-image
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Start containers
         run: |
@@ -61,7 +64,7 @@ jobs:
         run: tar cf targets.tar target project/target
 
       - name: Upload target directories
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: targets.tar
@@ -78,7 +81,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -92,8 +95,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: sbt
 
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
+
       - name: Download target directories (3.3.3)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-3.3.3-${{ matrix.java }}
 
@@ -103,7 +109,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (2.13.11)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-2.13.11-${{ matrix.java }}
 
@@ -113,7 +119,7 @@ jobs:
           rm targets.tar
 
       - name: Download target directories (2.12.18)
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: target-${{ matrix.os }}-2.12.18-${{ matrix.java }}
 
