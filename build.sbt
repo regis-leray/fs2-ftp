@@ -1,8 +1,8 @@
-lazy val scala212 = "2.12.18"
-lazy val scala213 = "2.13.11"
-lazy val scala330 = "3.3.3"
+lazy val scala212 = "2.12.20"
+lazy val scala213 = "2.13.15"
+lazy val scala330 = "3.3.4"
 
-val fs2Version = "3.8.0"
+val fs2Version = "3.11.0"
 
 inThisBuild(
   List(
@@ -17,7 +17,7 @@ inThisBuild(
 )
 ThisBuild / scalaVersion := scala330
 ThisBuild / crossScalaVersions := List(scala330, scala213, scala212)
-ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.graalvm("22.3.2", "17"))
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.graalvm(Graalvm.Distribution("graalvm"), "17"))
 ThisBuild / versionScheme := Some("early-semver")
 
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
@@ -30,13 +30,9 @@ ThisBuild / githubWorkflowBuildPreamble ++= Seq(
     name = Some("Start containers")
   )
 )
+
 ThisBuild / githubWorkflowBuild := Seq(
   WorkflowStep.Sbt(List("check", "test"))
-)
-
-//sbt-ci-release settings
-ThisBuild / githubWorkflowPublishPreamble := Seq(
-  WorkflowStep.Use(UseRef.Public("olafurpg", "setup-gpg", "v3"))
 )
 
 ThisBuild / githubWorkflowTargetTags ++= Seq("v*")
@@ -44,13 +40,19 @@ ThisBuild / githubWorkflowPublishTargetBranches := Seq(
   RefPredicate.StartsWith(Ref.Branch("master")),
   RefPredicate.StartsWith(Ref.Tag("v"))
 )
-ThisBuild / githubWorkflowPublish := Seq(WorkflowStep.Sbt(List("ci-release")))
-ThisBuild / githubWorkflowEnv ++= List(
-  "PGP_PASSPHRASE",
-  "PGP_SECRET",
-  "SONATYPE_PASSWORD",
-  "SONATYPE_USERNAME"
-).map(envKey => envKey -> s"$${{ secrets.$envKey }}").toMap
+
+ThisBuild / githubWorkflowPublish := Seq(
+  WorkflowStep.Sbt(
+    commands = List("ci-release"),
+    name = Some("Publish project"),
+    env = Map(
+      "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
+      "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
+      "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+      "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+    )
+  )
+)
 
 lazy val `fs2-ftp` = project
   .in(file("."))
@@ -80,13 +82,13 @@ lazy val `fs2-ftp` = project
     libraryDependencies ++= Seq(
       "co.fs2"                   %% "fs2-core"                % fs2Version,
       "co.fs2"                   %% "fs2-io"                  % fs2Version,
-      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.11.0",
+      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.12.0",
       "com.hierynomus"           % "sshj"                     % "0.39.0",
       "commons-net"              % "commons-net"              % "3.11.1",
-      "org.apache.logging.log4j" % "log4j-api"                % "2.20.0" % Test,
-      "org.apache.logging.log4j" % "log4j-core"               % "2.20.0" % Test,
-      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.20.0" % Test,
-      "org.scalatest"            %% "scalatest"               % "3.2.15" % Test
+      "org.apache.logging.log4j" % "log4j-api"                % "2.23.1" % Test,
+      "org.apache.logging.log4j" % "log4j-core"               % "2.23.1" % Test,
+      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.23.1" % Test,
+      "org.scalatest"            %% "scalatest"               % "3.2.19" % Test
     )
   )
 

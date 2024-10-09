@@ -15,10 +15,6 @@ on:
     tags: [v*]
 
 env:
-  PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-  SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-  SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-  PGP_SECRET: ${{ secrets.PGP_SECRET }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -27,24 +23,27 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [3.3.3, 2.13.11, 2.12.18]
-        java: [graal_22.3.2@17]
+        scala: [3.3.4, 2.13.15, 2.12.20]
+        java: [graal_graalvm@17]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup GraalVM (graal_22.3.2@17)
-        if: matrix.java == 'graal_22.3.2@17'
+      - name: Setup GraalVM (graal_graalvm@17)
+        if: matrix.java == 'graal_graalvm@17'
         uses: graalvm/setup-graalvm@v1
         with:
-          version: 22.3.2
           java-version: 17
+          distribution: graalvm
           components: native-image
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: sbt
+
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Start containers
         run: |
@@ -61,7 +60,7 @@ jobs:
         run: tar cf targets.tar target project/target
 
       - name: Upload target directories
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: target-${{ matrix.os }}-${{ matrix.scala }}-${{ matrix.java }}
           path: targets.tar
@@ -73,55 +72,62 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        scala: [3.3.3]
-        java: [graal_22.3.2@17]
+        scala: [3.3.4]
+        java: [graal_graalvm@17]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup GraalVM (graal_22.3.2@17)
-        if: matrix.java == 'graal_22.3.2@17'
+      - name: Setup GraalVM (graal_graalvm@17)
+        if: matrix.java == 'graal_graalvm@17'
         uses: graalvm/setup-graalvm@v1
         with:
-          version: 22.3.2
           java-version: 17
+          distribution: graalvm
           components: native-image
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cache: sbt
 
-      - name: Download target directories (3.3.3)
-        uses: actions/download-artifact@v3
-        with:
-          name: target-${{ matrix.os }}-3.3.3-${{ matrix.java }}
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
 
-      - name: Inflate target directories (3.3.3)
+      - name: Download target directories (3.3.4)
+        uses: actions/download-artifact@v4
+        with:
+          name: target-${{ matrix.os }}-3.3.4-${{ matrix.java }}
+
+      - name: Inflate target directories (3.3.4)
         run: |
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (2.13.11)
-        uses: actions/download-artifact@v3
+      - name: Download target directories (2.13.15)
+        uses: actions/download-artifact@v4
         with:
-          name: target-${{ matrix.os }}-2.13.11-${{ matrix.java }}
+          name: target-${{ matrix.os }}-2.13.15-${{ matrix.java }}
 
-      - name: Inflate target directories (2.13.11)
+      - name: Inflate target directories (2.13.15)
         run: |
           tar xf targets.tar
           rm targets.tar
 
-      - name: Download target directories (2.12.18)
-        uses: actions/download-artifact@v3
+      - name: Download target directories (2.12.20)
+        uses: actions/download-artifact@v4
         with:
-          name: target-${{ matrix.os }}-2.12.18-${{ matrix.java }}
+          name: target-${{ matrix.os }}-2.12.20-${{ matrix.java }}
 
-      - name: Inflate target directories (2.12.18)
+      - name: Inflate target directories (2.12.20)
         run: |
           tar xf targets.tar
           rm targets.tar
 
-      - uses: olafurpg/setup-gpg@v3
-
-      - run: sbt ci-release
+      - name: Publish project
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        run: sbt ci-release
