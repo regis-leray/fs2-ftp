@@ -185,14 +185,38 @@ pub   rsa4096 2018-08-22 [SC]
 uid           [ultimate] your name <you@example.com>
 sub   rsa4096 2018-08-22 [E]
 
-#send key to server
-$> gpg --keyserver keyserver.ubuntu.com --send-keys $LONG_ID
+$>LONG_ID=1234517530FB96F147C6A146A326F592D39AAAAA 
 
-# declare in travis (settings) PGP_SECRET in base64 (with no return carriage), dont put "" around the value !
+#send key to server
+$> gpg --keyserver hkp://keyserver.ubuntu.com --send-key $LONG_ID && \
+ gpg --keyserver hkp://pgp.mit.edu --send-key $LONG_ID && \
+ gpg --keyserver hkp://pool.sks-keyservers.net --send-key $LONG_ID 
+
+
+
+
+```
+
+2. Github secrets
+
+declare in github / repo / settings / secrets (new repository secret)
+
+```
+#  PGP_SECRET in base64 (with no return carriage), dont put "" around the value !
 gpg --armor --export-secret-keys $LONG_ID | base64 -w0 | pbcopy
 
-# declare in travis (settings) PGP_PASSPHRASE in plain text
+# declare in github (settings) PGP_PASSPHRASE in plain text
 The randomly generated password you used to create a fresh gpg key
+
+
+# declare in github (settings) SONATYPE_PASSWORD in plain text
+The password you use to log into https://s01.oss.sonatype.org/ (or https://oss.sonatype.org/ if your Sonatype account was created before February 2021). 
+***IMPORTANT*** Login s01.oss.sonatype.org and after profile, and select "User token"
+ Alternatively, the password part of the user token if you generated one above.
+
+# declare in github (settings) SONATYPE_USERNAME in plain text 
+***IMPORTANT*** Login s01.oss.sonatype.org, got to profile, and select "User token"
+Alternatively, the username part of the user token if you generated one above.
 ```
 
 2. create a tag and push
