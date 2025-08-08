@@ -11,7 +11,23 @@ sealed trait FtpSettings[A]
 
 object FtpSettings {
 
-  final case class FtpCredentials(username: String, password: String)
+  sealed trait FtpCredentials
+
+  /**
+   * Basic credentials used during ftp authentication
+   *
+   * @param username identifier of the user in plain text
+   * @param password secure secret of the user in plain text
+   */
+  final case class PasswordCredentials(username: String, password: String) extends FtpCredentials
+
+  /**
+   * Key file credentials used during ftp authentication
+   *
+   * @param username identifier of the user in plain text
+   * @param identity key file certificate used authentication
+   */
+  final case class KeyCredentials(username: String, identity: SftpIdentity) extends FtpCredentials
 
   sealed trait SftpIdentity {
     type KeyType
@@ -47,7 +63,7 @@ object FtpSettings {
     host: String,
     port: Int,
     credentials: FtpCredentials,
-    sftpIdentity: Option[SftpIdentity],
+    proxy: Option[Proxy],
     strictHostKeyChecking: Boolean,
     knownHosts: Option[String],
     timeOut: Int,
@@ -58,12 +74,12 @@ object FtpSettings {
 
   object SecureFtpSettings {
 
-    def apply(host: String, port: Int, credentials: FtpCredentials): SecureFtpSettings =
+    def apply(host: String, port: Int, credentials: FtpCredentials, proxy: Option[Proxy]): SecureFtpSettings =
       new SecureFtpSettings(
         host,
         port,
         credentials,
-        sftpIdentity = None,
+        proxy,
         strictHostKeyChecking = false,
         knownHosts = None,
         0,
@@ -72,12 +88,12 @@ object FtpSettings {
         0
       )
 
-    def apply(host: String, port: Int, credentials: FtpCredentials, identity: SftpIdentity): SecureFtpSettings =
+    def apply(host: String, port: Int, credentials: FtpCredentials): SecureFtpSettings =
       new SecureFtpSettings(
         host,
         port,
         credentials,
-        sftpIdentity = Some(identity),
+        None,
         strictHostKeyChecking = false,
         knownHosts = None,
         0,
@@ -118,7 +134,7 @@ object FtpSettings {
   final case class UnsecureFtpSettings(
     host: String,
     port: Int,
-    credentials: FtpCredentials,
+    credentials: PasswordCredentials,
     binary: Boolean,
     passiveMode: Boolean,
     proxy: Option[Proxy],
@@ -129,11 +145,11 @@ object FtpSettings {
 
   object UnsecureFtpSettings {
 
-    def apply(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
-      new UnsecureFtpSettings(host, port, creds, true, true, None, 0, 0, None)
+    def apply(host: String, port: Int, creds: PasswordCredentials, proxy: Option[Proxy] = None): UnsecureFtpSettings =
+      new UnsecureFtpSettings(host, port, creds, true, true, proxy, 0, 0, None)
 
-    def ssl(host: String, port: Int, creds: FtpCredentials): UnsecureFtpSettings =
-      new UnsecureFtpSettings(host, port, creds, true, true, None, 0, 0, Some(SslParams.default))
+    def ssl(host: String, port: Int, creds: PasswordCredentials, proxy: Option[Proxy] = None): UnsecureFtpSettings =
+      new UnsecureFtpSettings(host, port, creds, true, true, proxy, 0, 0, Some(SslParams.default))
   }
 
 }
