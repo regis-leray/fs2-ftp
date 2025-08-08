@@ -23,12 +23,12 @@ final private class UnsecureFtp[F[_]: Async](
         )
       )
 
-    val is: F[InputStream] = execute(client => Option(client.retrieveFileStream(path)))
+    val inputStreamF: F[InputStream] = execute(client => Option(client.retrieveFileStream(path)))
       .flatMap(opt =>
         opt.fold(Sync[F].raiseError[InputStream](new FileNotFoundException(s"file doesnt exist $path")))(Sync[F].pure)
       )
 
-    fs2.io.readInputStream(is, chunkSize) ++ (fs2.Stream.eval(terminate) >> fs2.Stream.empty)
+    fs2.Stream.bracket(inputStreamF)(_ => terminate).flatMap(is => fs2.io.readInputStream(Sync[F].pure(is), chunkSize))
   }
 
   def rm(path: String): F[Unit] =
