@@ -43,6 +43,19 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       .map(_.path) should contain allElementsOf List("/notes.txt", "/dir1")
   }
 
+  "timestamp" in {
+    connect[IO, JFTPClient](settings)
+      .use {
+        _.ls("/notes.txt").compile.toList.map(_.last)
+      }
+      .unsafeRunSync()
+
+
+    for {
+      file <- ls("/notes.txt").runLast
+    } yield assertTrue(file.exists(r => JDuration.between(r.lastModified, Instant.now()).abs.toMinutes < 10))
+  }
+
   "ls with wrong dir" in {
     connect[IO, JFTPClient](settings)
       .use {
@@ -197,6 +210,9 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       case Left(_) =>
     }
   }
+
+
+
 
   "upload a file" in {
     val data: fs2.Stream[IO, Byte] = fs2.Stream.emits("Hello F World".getBytes.toSeq).covary
