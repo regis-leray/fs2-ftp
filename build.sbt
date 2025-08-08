@@ -1,8 +1,8 @@
 lazy val scala212 = "2.12.20"
-lazy val scala213 = "2.13.15"
+lazy val scala213 = "2.13.16"
 lazy val scala330 = "3.3.4"
 
-val fs2Version = "3.11.0"
+val fs2Version = "3.12.0"
 
 inThisBuild(
   List(
@@ -82,12 +82,12 @@ lazy val `fs2-ftp` = project
     libraryDependencies ++= Seq(
       "co.fs2"                   %% "fs2-core"                % fs2Version,
       "co.fs2"                   %% "fs2-io"                  % fs2Version,
-      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.12.0",
-      "com.hierynomus"           % "sshj"                     % "0.39.0",
-      "commons-net"              % "commons-net"              % "3.11.1",
-      "org.apache.logging.log4j" % "log4j-api"                % "2.23.1" % Test,
-      "org.apache.logging.log4j" % "log4j-core"               % "2.23.1" % Test,
-      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.23.1" % Test,
+      "org.scala-lang.modules"   %% "scala-collection-compat" % "2.13.0",
+      "com.hierynomus"           % "sshj"                     % "0.40.0",
+      "commons-net"              % "commons-net"              % "3.12.0",
+      "org.apache.logging.log4j" % "log4j-api"                % "2.25.1" % Test,
+      "org.apache.logging.log4j" % "log4j-core"               % "2.25.1" % Test,
+      "org.apache.logging.log4j" % "log4j-slf4j-impl"         % "2.25.1" % Test,
       "org.scalatest"            %% "scalatest"               % "3.2.19" % Test
     )
   )
