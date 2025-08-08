@@ -2,7 +2,7 @@ package fs2.ftp
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{ IO, Resource }
-import fs2.ftp.FtpSettings.{ FtpCredentials, UnsecureFtpSettings }
+import fs2.ftp.FtpSettings.{ PasswordCredentials, UnsecureFtpSettings }
 import fs2.io.file.Files
 import org.apache.commons.net.ftp.{ FTPClient => JFTPClient }
 import org.scalatest.BeforeAndAfterAll
@@ -22,7 +22,7 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
   val home = Paths.get("ftp-home/ftp/home")
 
   "invalid credentials" in {
-    connect[IO, JFTPClient](settings.copy(credentials = FtpCredentials("test", "test")))
+    connect[IO, JFTPClient](settings.copy(credentials = PasswordCredentials("test", "test")))
       .use(_ => IO.unit)
       .attempt
       .unsafeRunSync() should matchPattern {
@@ -233,11 +233,11 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 class UnsecureFtpSslTest extends BaseFtpTest {
 
   override val settings: UnsecureFtpSettings =
-    UnsecureFtpSettings.ssl("127.0.0.1", 2121, FtpCredentials("username", "userpass"))
+    UnsecureFtpSettings.ssl("127.0.0.1", 2121, PasswordCredentials("username", "userpass"))
 }
 
 class UnsecureFtpTest extends BaseFtpTest {
-  override val settings = UnsecureFtpSettings("127.0.0.1", port = 2121, FtpCredentials("username", "userpass"))
+  override val settings = UnsecureFtpSettings("127.0.0.1", port = 2121, PasswordCredentials("username", "userpass"))
 
   "readFile fail when completePendingCommand is false" in {
     val ftpClient = new UnsecureFtp[IO](new JFTPClient {

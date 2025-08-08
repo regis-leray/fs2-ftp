@@ -9,7 +9,14 @@ import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.{ OpenMode, Response, SFTPException, SFTPClient => JSFTPClient }
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import net.schmizz.sshj.userauth.password.PasswordUtils
-import fs2.ftp.FtpSettings.{ KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings, SftpIdentity }
+import fs2.ftp.FtpSettings.{
+  KeyCredentials,
+  KeyFileSftpIdentity,
+  PasswordCredentials,
+  RawKeySftpIdentity,
+  SecureFtpSettings,
+  SftpIdentity
+}
 
 import scala.jdk.CollectionConverters._
 
@@ -119,10 +126,10 @@ object SecureFtp {
 
             ssh.connect(host, port)
 
-            sftpIdentity
-              .fold(ssh.authPassword(credentials.username, credentials.password))(
-                setIdentity(_, credentials.username)(ssh)
-              )
+            credentials match {
+              case PasswordCredentials(username, password) => ssh.authPassword(username, password)
+              case KeyCredentials(username, identity)      => setIdentity(identity, username)(ssh)
+            }
 
             new SecureFtp(ssh.newSFTPClient(), settings.maxUnconfirmedWrites)
           })(client => client.execute(_.close()).voidError)

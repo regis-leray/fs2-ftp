@@ -2,26 +2,31 @@ package fs2.ftp
 
 import cats.effect.unsafe.IORuntime
 import cats.effect.{ IO, Resource }
-import fs2.ftp.FtpSettings.{ FtpCredentials, KeyFileSftpIdentity, RawKeySftpIdentity, SecureFtpSettings }
+import fs2.ftp.FtpSettings.{
+  KeyCredentials,
+  KeyFileSftpIdentity,
+  PasswordCredentials,
+  RawKeySftpIdentity,
+  SecureFtpSettings
+}
 import fs2.io.file.Files
 import net.schmizz.sshj.sftp.Response.StatusCode
-import net.schmizz.sshj.sftp.{ SFTPException, SFTPClient => JSFTPClient }
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-
 import java.nio.file.{ Paths, Files => JFiles }
+import net.schmizz.sshj.sftp.{ SFTPException, SFTPClient => JSFTPClient }
 import scala.io.Source
 
 class SecureFtpSpec extends AnyWordSpec with Matchers {
   implicit val runtime: IORuntime = IORuntime.global
 
-  private val settings = SecureFtpSettings("127.0.0.1", port = 2222, FtpCredentials("foo", "foo"))
+  private val settings = SecureFtpSettings("127.0.0.1", port = 2222, PasswordCredentials("foo", "foo"))
 
   val home = Paths.get("ftp-home/sftp/home/foo")
 
   "SFtp" should {
     "connect with invalid credentials" in {
-      connect[IO, JSFTPClient](settings.copy(credentials = FtpCredentials("invalid", "invalid")))
+      connect[IO, JSFTPClient](settings.copy(credentials = PasswordCredentials("invalid", "invalid")))
         .use(_ => IO.unit)
         .attempt
         .unsafeRunSync() should matchPattern {
@@ -38,7 +43,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
     "connect with ssh key file " in {
       val privatekey = io.Source.fromURI(this.getClass.getResource("/ssh_host_rsa_key").toURI).mkString
 
-      val settings = SecureFtpSettings("127.0.0.1", 3333, FtpCredentials("fooz", ""), RawKeySftpIdentity(privatekey))
+      val settings = SecureFtpSettings("127.0.0.1", 3333, KeyCredentials("fooz", RawKeySftpIdentity(privatekey)))
 
       connect[IO, JSFTPClient](settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
@@ -49,7 +54,7 @@ class SecureFtpSpec extends AnyWordSpec with Matchers {
       val privatekey = Paths.get(this.getClass.getResource("/ssh_host_rsa_key").toURI)
 
       val settings =
-        SecureFtpSettings("127.0.0.1", 3333, FtpCredentials("fooz", ""), KeyFileSftpIdentity(privatekey, None))
+        SecureFtpSettings("127.0.0.1", 3333, KeyCredentials("fooz", KeyFileSftpIdentity(privatekey, None)))
 
       connect[IO, JSFTPClient](settings).use(_ => IO.unit).attempt.unsafeRunSync() should matchPattern {
         case Right(_) =>
