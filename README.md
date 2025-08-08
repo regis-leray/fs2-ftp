@@ -174,7 +174,7 @@ ZIO.runtime.map { implicit r: zio.Runtime[Any] =>
 # generate key
 $ gpg --gen-key
 
-# list the keys
+# list the keysFtpResource.scala
 $ gpg --list-keys
 
 /home/foo/.gnupg/pubring.gpg
@@ -188,16 +188,13 @@ sub   rsa4096 2018-08-22 [E]
 $>LONG_ID=1234517530FB96F147C6A146A326F592D39AAAAA 
 
 #send key to server
-$> gpg --keyserver hkp://keyserver.ubuntu.com --send-key $LONG_ID && \
- gpg --keyserver hkp://pgp.mit.edu --send-key $LONG_ID && \
- gpg --keyserver hkp://pool.sks-keyservers.net --send-key $LONG_ID 
-
-
-
+$> gpg --keyserver hkp://keyserver.ubuntu.com --send-key $LONG_ID
 
 ```
 
-2. Github secrets
+2. Github GPG / Secrets
+
+Full documentation here => https://github.com/sbt/sbt-ci-release?tab=readme-ov-file#gpg
 
 declare in github / repo / settings / secrets (new repository secret)
 
@@ -209,14 +206,15 @@ gpg --armor --export-secret-keys $LONG_ID | base64 -w0 | pbcopy
 The randomly generated password you used to create a fresh gpg key
 
 
-# declare in github (settings) SONATYPE_PASSWORD in plain text
-The password you use to log into https://s01.oss.sonatype.org/ (or https://oss.sonatype.org/ if your Sonatype account was created before February 2021). 
-***IMPORTANT*** Login s01.oss.sonatype.org and after profile, and select "User token"
- Alternatively, the password part of the user token if you generated one above.
+login to https://central.sonatype.com/
+click your username in the top right, then View Account,
+click on "Generate User Token", and "Ok"
 
-# declare in github (settings) SONATYPE_USERNAME in plain text 
-***IMPORTANT*** Login s01.oss.sonatype.org, got to profile, and select "User token"
-Alternatively, the username part of the user token if you generated one above.
+# declare in github (settings) SONATYPE_PASSWORD in plain text
+The password part of your Sonatype OSSRH token, generated on the Central Portal (not the account password!).
+
+# declare in github (settings) SONATYPE_USERNAME in plain text
+The username part of your Sonatype user token (not the account username!). 
 ```
 
 2. create a tag and push
