@@ -19,6 +19,8 @@ ThisBuild / scalaVersion := scala330
 ThisBuild / crossScalaVersions := List(scala330, scala213, scala212)
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.graalvm(Graalvm.Distribution("graalvm"), "17"))
 ThisBuild / versionScheme := Some("early-semver")
+//https://github.com/sbt/sbt-ci-release/releases/tag/v1.11.0
+ThisBuild / sbtPluginPublishLegacyMavenStyle := false
 
 ThisBuild / githubWorkflowBuildPreamble ++= Seq(
   WorkflowStep.Run(
@@ -60,7 +62,6 @@ lazy val `fs2-ftp` = project
     name := "fs2-ftp",
     Test / fork := true,
     Test / parallelExecution := false,
-    publishMavenStyle := true,
     scalacOptions ++= Seq(
       "-encoding",
       "UTF-8",
