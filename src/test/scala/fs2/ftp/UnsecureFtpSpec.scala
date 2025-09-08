@@ -11,6 +11,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.{ FileNotFoundException, InputStream }
 import java.nio.file.{ Paths, Files => JFiles }
+import java.time.Instant
 import scala.io.Source
 import scala.util.Random
 
@@ -41,6 +42,19 @@ trait BaseFtpTest extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       }
       .unsafeRunSync()
       .map(_.path) should contain allElementsOf List("/notes.txt", "/dir1")
+  }
+
+  import java.time.{ Duration => JDuration }
+
+  "timestamp" in {
+    val lastModified = connect[IO, JFTPClient](settings)
+      .use {
+        _.ls("/notes.txt").compile.toList.map(_.last)
+      }
+      .unsafeRunSync()
+      .lastModified
+
+    JDuration.between(lastModified, Instant.now()).abs.toMinutes < 10 shouldBe true
   }
 
   "ls with wrong dir" in {
