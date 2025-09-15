@@ -25,9 +25,9 @@ import fs2.ftp.UnsecureFtp._
 import fs2.ftp.FtpSettings._
 
 // FTP
-val settings = UnsecureFtpSettings("127.0.0.1", 21, FtpCredentials("foo", "bar"))
+val settings = UnsecureFtpSettings("127.0.0.1", 21, PasswordCredentials("foo", "bar"))
 // FTP-SSL 
-val settings = UnsecureFtpSettings.ssl("127.0.0.1", 21, FtpCredentials("foo", "bar"))
+val settings = UnsecureFtpSettings.ssl("127.0.0.1", 21, PasswordCredentials("foo", "bar"))
 
 connect[IO](settings).use{
   _.ls("/").compile.toList
@@ -42,7 +42,7 @@ import fs2.ftp.SecureFtp._
 import fs2.ftp.FtpSettings._
 import cats.effect.IO
 
-val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+val settings = SecureFtpSettings("127.0.0.1", 22, PasswordCredentials("foo", "bar"))
 
 connect[IO](settings).use(
   _.ls("/").compile.toList
@@ -60,7 +60,7 @@ import cats.effect.IO
 
 val keyFile = KeyFileSftpIdentity(Paths.get("privateKeyStringPath"))
 
-val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", ""), keyFile)
+val settings = SecureFtpSettings("127.0.0.1", 22, KeyCredentials("foo", keyFile))
 
 connect[IO](settings).use(
   _.ls("/").compile.toList
@@ -83,7 +83,7 @@ import fs2.ftp.FtpSettings._
 object MyApp extends IOApp.Simple {
   //F[_] Effect will be set as cats.effect.IO
 
-  private val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+  private val settings = SecureFtpSettings("127.0.0.1", 22, PasswordCredentials("foo", "bar"))
 
   //print all files/directories
   def run: IO[Unit] = {
@@ -105,7 +105,7 @@ import cats.effect.IO
 import fs2.ftp.SecureFtp._
 import fs2.ftp.FtpSettings._
 
-val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+val settings = SecureFtpSettings("127.0.0.1", 22, PasswordCredentials("foo", "bar"))
 
 connect[IO](settings).use(
   _.execute(_.version())
@@ -133,7 +133,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import Task.contextShift
 
-val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+val settings = SecureFtpSettings("127.0.0.1", 22, PasswordCredentials("foo", "bar"))
 
 val _: monix.Task[List[FtpResource]] = connect(settings).use {
   _.ls("/").compile.toList
@@ -153,7 +153,7 @@ import fs2.ftp.FtpSettings._
 import zio.interop.catz._
 import zio.ZIO
 
-val settings = SecureFtpSettings("127.0.0.1", 22, FtpCredentials("foo", "bar"))
+val settings = SecureFtpSettings("127.0.0.1", 22, PasswordCredentials("foo", "bar"))
 
 ZIO.runtime.map { implicit r: zio.Runtime[Any] =>
   implicit val CE: ConcurrentEffect[zio.Task] = implicitly
